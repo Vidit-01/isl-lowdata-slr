@@ -56,10 +56,20 @@ def _backend() -> str:
         import mediapipe as mp
 
         if hasattr(getattr(mp, "solutions", None), "holistic"):
+            # some mediapipe/protobuf combinations (e.g. Kaggle) cannot parse the bundled graph
+            # ("Failed to parse: node {"), so prove it works on a blank frame before choosing it
+            with mp.solutions.holistic.Holistic(static_image_mode=False, model_complexity=1) as det:
+                det.process(np.zeros((64, 64, 3), np.uint8))
             return "solutions"
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[extract] solutions backend unusable ({_short(exc)}); using the tasks backend", flush=True)
     return "tasks"
+
+
+def _short(err, n: int = 200) -> str:
+    """One line, so a failing graph dump cannot flood the log or failed.txt."""
+    text = " ".join(str(err).split())
+    return text if len(text) <= n else text[:n] + " ..."
 
 
 def _fill(out: np.ndarray, t: int, start: int, count: int, lms) -> None:
@@ -231,7 +241,7 @@ def _job(args):
         os.replace(tmp, npy)
         return npy, arr.shape[0], fps, None
     except Exception as exc:  # recorded, never fatal for the whole run
-        return npy, 0, 0.0, f"{type(exc).__name__}: {exc}"
+        return npy, 0, 0.0, f"{type(exc).__name__}: {_short(exc, 300)}"
 
 
 def parse_shard(text: str | None) -> tuple[int, int] | None:
@@ -289,7 +299,7 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
             count[0] += 1
             if err:
                 failed.append((npy, err))
-                if err.startswith("worker crashed"):
+                if err.startswith("worker crashed") or len(failed) <= 3:
                     print(f"[extract] {err}", flush=True)
             else:
                 fps_by_path[npy] = fps
