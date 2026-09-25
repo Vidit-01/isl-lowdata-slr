@@ -279,6 +279,7 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
     print(f"[extract] {len(v)} videos, {len(todo)} to do, backend={backend}, workers={workers}", flush=True)
     fps_by_path: dict[str, float] = {}
     failed = []
+    stopped = False
     t0 = time.time()
     if todo:
         count = [0]
@@ -296,7 +297,8 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
                 rate = count[0] / max(1e-6, time.time() - t0)
                 print(f"[extract] {count[0]}/{len(todo)} {rate:.2f} vid/s failed={len(failed)}", flush=True)
 
-        if _run_pool(todo, workers, backend, task, max_side, time_budget_s, on_result):
+        stopped = _run_pool(todo, workers, backend, task, max_side, time_budget_s, on_result)
+        if stopped:
             print("[extract] time budget reached; stopping (re-run to resume)", flush=True)
     if failed:
         with open(store / "failed.txt", "a", encoding="utf-8") as f:
@@ -306,6 +308,7 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
     done["fps"] = [f"{fps_by_path.get(str(store / p), 0.0):.2f}" for p in done["path"]]
     append_index(store, done)
     print(f"[extract] store {store}: +{len(done)} clips indexed, {len(failed)} failed", flush=True)
+    done.attrs["complete"] = not stopped  # every clip either extracted or recorded as failed
     return done
 
 

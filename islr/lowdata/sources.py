@@ -7,6 +7,8 @@ archives are streamed part by part (download -> extract landmarks -> delete).
                  ~57 GB in 44 category zips, CC BY 4.0. The project used only 143 of them.
                  Zenodo throttles each connection (~50 KB/s observed), so files are fetched
                  as parallel HTTP byte ranges with resume.
+  include_words  a few INCLUDE labels (e.g. House -> home) fetched from inside the remote zips,
+                 without downloading them (the clips of one label are ~1-2% of a zip).
   isl_dictionary ISLRTC dictionary (HF silentone0725/Indian_Sign_Language_Data.gov_Rencoded,
                  MIT): ~13.6k clips, ONE per word, <Letter>/<Word>.mp4. Only words that
                  overlap the target vocabulary are downloaded; "(Explaination)" clips skipped.
@@ -23,6 +25,7 @@ archives are streamed part by part (download -> extract landmarks -> delete).
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
@@ -38,8 +41,8 @@ import numpy as np
 import pandas as pd
 
 from .extract import VIDEO_EXTS, extract_to_store, in_shard, parse_shard, videos_from_folder
-from .store import (append_index, clip_key, from_gislr, init_store, load_gislr_parquet, merge_stores,
-                    normalize_word, read_index)
+from .store import (append_index, clip_key, completion, from_gislr, init_store, load_gislr_parquet,
+                    mark_complete, merge_stores, normalize_word, read_index)
 
 ZENODO_INCLUDE = "https://zenodo.org/api/records/4010759"
 HF_DICT = "silentone0725/Indian_Sign_Language_Data.gov_Rencoded"
@@ -92,6 +95,130 @@ def _fetch_range(url, part: Path, start: int, end: int, retries: int, token) -> 
         raise RuntimeError(f"failed to download bytes {start}-{end} of {url}")
 
 
+def download_span(url: str, dst: Path, start: int, end: int, connections: int = 8, retries: int = 10,
+                  token: str | None = None) -> Path:
+    """Bytes start..end (inclusive) of `url` into `dst`, as `connections` parallel ranges."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    dst = Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    size = end - start + 1
+    connections = max(1, min(connections, size // (256 << 10) or 1))
+    chunk = -(-size // connections)
+    spans = [(i, start + i * chunk, min(end, start + (i + 1) * chunk - 1)) for i in range(connections)]
+    parts = [dst.with_name(dst.name + f".part{i}") for i, _, _ in spans]
+    with ThreadPoolExecutor(connections) as ex:
+        list(ex.map(lambda s: _fetch_range(url, parts[s[0]], s[1], s[2], retries, token), spans))
+    tmp = dst.with_name(dst.name + ".tmp")
+    with open(tmp, "wb") as out:
+        for p in parts:
+            with open(p, "rb") as f:
+                shutil.copyfileobj(f, out, 1 << 20)
+    if tmp.stat().st_size != size:
+        raise RuntimeError(f"{dst.name}: {tmp.stat().st_size} bytes, expected {size}")
+    tmp.replace(dst)
+    for p in parts:
+        p.unlink(missing_ok=True)
+    return dst
+
+
+class HttpRangeFile(io.RawIOBase):
+    """Read-only, seekable view of a remote file through HTTP Range requests, so
+    `zipfile` can read a remote zip's directory without downloading the zip."""
+
+    def __init__(self, url: str, size: int, block: int = 64 << 10, retries: int = 6):
+        self.url, self.size, self.block, self.retries = url, size, block, retries
+        self.pos = 0
+        self.cache: dict[int, bytes] = {}
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self.pos
+
+    def seek(self, off, whence=0):
+        self.pos = off if whence == 0 else self.pos + off if whence == 1 else self.size + off
+        return self.pos
+
+    def _get(self, i: int) -> bytes:
+        if i not in self.cache:
+            a, b = i * self.block, min(self.size, (i + 1) * self.block) - 1
+            for attempt in range(self.retries):
+                try:
+                    req = urllib.request.Request(self.url, headers={"Range": f"bytes={a}-{b}"})
+                    with urllib.request.urlopen(req, timeout=120) as r:
+                        if r.status != 206:
+                            raise RuntimeError("server ignored Range")
+                        self.cache[i] = r.read()
+                    break
+                except Exception as exc:
+                    if attempt == self.retries - 1:
+                        raise
+                    print(f"[http] {self.url} bytes {a}-{b}: {exc!r}, retrying", flush=True)
+                    time.sleep(5 * 2 ** attempt)
+        return self.cache[i]
+
+    def readinto(self, buf):
+        n = min(len(buf), self.size - self.pos)
+        if n <= 0:
+            return 0
+        out = bytearray()
+        while len(out) < n:
+            i, off = divmod(self.pos + len(out), self.block)
+            out += self._get(i)[off:off + n - len(out)]
+        buf[:n] = out
+        self.pos += n
+        return n
+
+
+def fetch_zip_member(url: str, zi: zipfile.ZipInfo, dst: Path, connections: int = 16,
+                     size: int | None = None) -> Path:
+    """One member of a remote zip, fetched as parallel byte ranges and inflated (CRC-checked)."""
+    import struct
+    import zlib
+
+    dst = Path(dst)
+    raw = dst.with_name(dst.name + ".zipped")
+    # the local header repeats the name and has its own extra field; over-fetch to cover it
+    head = 30 + len(zi.filename.encode()) + len(zi.extra) + 4096
+    end = zi.header_offset + head + zi.compress_size - 1
+    download_span(url, raw, zi.header_offset, min(end, size - 1) if size else end, connections)
+    with open(raw, "rb") as f:
+        h = f.read(30)
+        if h[:4] != b"PK\x03\x04":
+            raise RuntimeError(f"{zi.filename}: no local file header")
+        n, e = struct.unpack("<HH", h[26:30])
+        f.seek(30 + n + e)
+        if 30 + n + e + zi.compress_size > raw.stat().st_size:
+            raise RuntimeError(f"{zi.filename}: local extra field larger than expected")
+        left, crc = zi.compress_size, 0
+        inflate = zlib.decompressobj(-15) if zi.compress_type == zipfile.ZIP_DEFLATED else None
+        if zi.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+            raise RuntimeError(f"{zi.filename}: compression type {zi.compress_type} not supported")
+        with open(dst, "wb") as out:
+            while left:
+                chunk = f.read(min(left, 1 << 20))
+                if not chunk:
+                    raise RuntimeError(f"{zi.filename}: truncated")
+                left -= len(chunk)
+                data = inflate.decompress(chunk) if inflate else chunk
+                crc = zlib.crc32(data, crc)
+                out.write(data)
+            if inflate:
+                data = inflate.flush()
+                crc = zlib.crc32(data, crc)
+                out.write(data)
+    raw.unlink()
+    if crc != zi.CRC:
+        dst.unlink()
+        raise RuntimeError(f"{zi.filename}: CRC mismatch")
+    return dst
+
+
 def download(url: str, dst: Path, size: int | None = None, token: str | None = None,
              connections: int = 8, retries: int = 10, min_parallel: int = 32 << 20) -> Path:
     """Resumable download. With a known size, fetch `connections` byte ranges in
@@ -101,24 +228,7 @@ def download(url: str, dst: Path, size: int | None = None, token: str | None = N
         return dst
     dst.parent.mkdir(parents=True, exist_ok=True)
     if size and size >= min_parallel and connections > 1:
-        from concurrent.futures import ThreadPoolExecutor
-
-        chunk = -(-size // connections)
-        spans = [(i, i * chunk, min(size, (i + 1) * chunk) - 1) for i in range(connections)]
-        parts = [dst.with_name(dst.name + f".part{i}") for i, _, _ in spans]
-        with ThreadPoolExecutor(connections) as ex:
-            list(ex.map(lambda s: _fetch_range(url, parts[s[0]], s[1], s[2], retries, token), spans))
-        tmp = dst.with_name(dst.name + ".tmp")
-        with open(tmp, "wb") as out:
-            for p in parts:
-                with open(p, "rb") as f:
-                    shutil.copyfileobj(f, out, 1 << 20)
-        if tmp.stat().st_size != size:
-            raise RuntimeError(f"{dst.name}: {tmp.stat().st_size} bytes, expected {size}")
-        tmp.replace(dst)
-        for p in parts:
-            p.unlink(missing_ok=True)
-        return dst
+        return download_span(url, dst, 0, size - 1, connections, retries, token)
     part = dst.with_name(dst.name + ".part")
     for attempt in range(retries):
         have = part.stat().st_size if part.exists() else 0
@@ -144,14 +254,18 @@ def download(url: str, dst: Path, size: int | None = None, token: str | None = N
 # the project's own corpus
 # ----------------------------------------------------------------------------------
 def ingest_isl40(store: str, root: str | None = None, workers: int | None = None, shard=None,
-                 time_budget_h: float | None = None) -> None:
+                 time_budget_h: float | None = None, revision: str | None = None,
+                 work: str | None = None) -> bool:
     """Existing corpus. metadata.csv carries dataset/signer; INCLUDE clips get a
-    session from their MVI number at load time (store.identity via load_stores)."""
+    session from their MVI number at load time (store.identity via load_stores).
+    `revision` pins the Hugging Face commit, so every member extracts the same corpus.
+    Signers named `User<n>` (ISL500) or `team_<name>` (the team's own recordings) are
+    kept as identities. Returns True (and writes COMPLETE.json) when every clip is done."""
     if root is None or not (Path(root) / "metadata.csv").exists():
         from huggingface_hub import snapshot_download
 
-        root = root or str(Path(store) / "_download")
-        snapshot_download(repo_id=HF_ISL40, repo_type="dataset", local_dir=root,
+        root = root or str(Path(work or Path(store) / "_download") / "isl40")
+        snapshot_download(repo_id=HF_ISL40, repo_type="dataset", local_dir=root, revision=revision,
                           token=os.environ.get("HF_TOKEN"))
     root = Path(root)
     meta = pd.read_csv(root / "metadata.csv", dtype=str, keep_default_na=False)
@@ -163,7 +277,7 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
         if not p.exists():
             continue
         ds = str(r.dataset)
-        signer = str(r.signer) if re.match(r"^User\d+$", str(r.signer)) else ""
+        signer = str(r.signer) if re.match(r"^(User\d+|team_\w+)$", str(r.signer)) else ""
         if ds.startswith("ISLRTC"):
             signer = "islrtc"
         m = re.search(r"session(\d+)", rel)
@@ -172,8 +286,13 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
                      "source": ds.lower(), "signer": signer, "session": session,
                      "license": r.license})
     print(f"[isl40] {len(rows)} videos found under {root}")
-    extract_to_store(pd.DataFrame(rows), store, workers=workers, shard=shard,
-                     time_budget_s=time_budget_h * 3600 if time_budget_h else None)
+    done = extract_to_store(pd.DataFrame(rows), store, workers=workers, shard=shard,
+                            time_budget_s=time_budget_h * 3600 if time_budget_h else None)
+    if done.attrs.get("complete") and shard is None:
+        info = mark_complete(store, source="isl40", revision=revision or "main", videos=len(rows))
+        print(f"[isl40] complete: {info}", flush=True)
+        return True
+    return False
 
 
 # ----------------------------------------------------------------------------------
@@ -205,13 +324,86 @@ def _include_rows(vdir: Path) -> list[dict]:
     return rows
 
 
+def include_order(files: list[dict], member: int, members: int) -> list[dict]:
+    """Every zip, in an order that differs per member: zips are dealt round-robin
+    (largest first) and member i starts with its own hand, then i+1's, ... So members
+    working alone each end up with everything, and members who attach each other's
+    outputs mostly skip different zips."""
+    dealt = sorted(files, key=lambda f: (-f["size"], f["key"]))
+    hands = [dealt[h::members] for h in range(members)]
+    return [f for h in range(members) for f in hands[(member + h) % members]]
+
+
+def include_word_members(words: dict, categories=None) -> list[dict]:
+    """The clips of some INCLUDE labels, found by reading only the zips' directories.
+    words maps an INCLUDE label to the word used here, e.g. {"House": "home"}."""
+    want = {normalize_word(k): normalize_word(v) for k, v in words.items()}
+    rows = []
+    for f in include_files(categories):
+        with zipfile.ZipFile(HttpRangeFile(f["url"], f["size"])) as z:
+            infos = z.infolist()
+        for zi in infos:
+            parts = [q for q in zi.filename.split("/")[:-1] if q]
+            if zi.is_dir() or not parts or "__MACOSX" in parts or Path(zi.filename).suffix.lower() not in VIDEO_EXTS:
+                continue
+            label = normalize_word(parts[-1])
+            if label in want:
+                rows.append({"zip": f["key"], "url": f["url"], "size": f["size"], "info": zi, "video_rel": zi.filename,
+                             "word": want[label], "label": label})
+    return rows
+
+
+def ingest_include_words(store: str, words: dict, categories=None, work: str | None = None,
+                         workers: int | None = None, time_budget_h: float | None = None,
+                         connections: int = 16) -> bool:
+    """A few INCLUDE words without downloading whole zips: each clip is fetched from inside
+    its remote zip (HTTP byte ranges), e.g. Brother, House and I (21 clips each, ~14 GB of
+    zips) for the 40-word corpus's thin words brother, home and me. Clips keep INCLUDE's
+    paths, so their keys and signer sessions match a full INCLUDE store."""
+    t0 = time.time()
+    deadline = t0 + time_budget_h * 3600 if time_budget_h else None
+    init_store(store)
+    rows = include_word_members(words, categories)
+    found = pd.Series([r["label"] for r in rows]).value_counts().to_dict() if rows else {}
+    missing = [w for w in words if normalize_word(w) not in found]
+    print(f"[include_words] clips per label: {found}" + (f"; NOT FOUND: {missing}" if missing else ""), flush=True)
+    vdir = Path(work or Path(store) / "_download") / "include_words"
+    todo = [r for r in rows if not (Path(store) / "npy" / (clip_key("include", r["video_rel"]) + ".npy")).exists()]
+    got = []
+    for i, r in enumerate(todo):
+        if deadline and time.time() > deadline:
+            print("[include_words] time budget reached while downloading; re-run to continue", flush=True)
+            break
+        dst = vdir / r["video_rel"]
+        if not dst.exists():
+            td = time.time()
+            fetch_zip_member(r["url"], r["info"], dst, connections, r["size"])
+            print(f"[include_words] {i + 1}/{len(todo)} {r['video_rel']}: {r['info'].compress_size / 1e6:.1f} MB "
+                  f"at {r['info'].compress_size / 1e6 / max(1e-6, time.time() - td):.2f} MB/s", flush=True)
+        got.append({"video_path": str(dst), "video_rel": r["video_rel"], "word": r["word"],
+                    "source": "include", "license": LICENSES["include"]})
+    finished = len(got) == len(todo)
+    if got:
+        left = deadline - time.time() if deadline else None
+        finished = extract_to_store(pd.DataFrame(got), store, workers=workers,
+                                    time_budget_s=left).attrs.get("complete", True) and finished
+    shutil.rmtree(vdir, ignore_errors=True)
+    if finished and not missing:
+        info = mark_complete(store, source="include_words", words=words, clips=len(rows))
+        print(f"[include_words] complete: {info}", flush=True)
+        return True
+    return False
+
+
 def ingest_include(store: str, categories=None, keys=None, work: str | None = None,
                    zip_dir: str | None = None, workers: int | None = None, keep_zips: bool = False,
-                   time_budget_h: float | None = None, shard=None) -> None:
+                   time_budget_h: float | None = None, shard=None, member: int | None = None,
+                   members: int = 1) -> bool:
     """Zip by zip: download (or take from --zip-dir) -> unzip -> landmarks -> delete.
 
-    shard=(i, n) takes every n-th zip (largest first, dealt round-robin), so the ~50 GB
-    of downloads and the extraction are split between n people."""
+    shard=(i, n) takes only every n-th zip (largest first, dealt round-robin).
+    member=i of `members` takes every zip, starting with member i's share (include_order).
+    Returns True (and writes COMPLETE.json) once every selected zip is done."""
     t0 = time.time()
     init_store(store)
     work_dir = Path(work or Path(store) / "_download")
@@ -224,11 +416,14 @@ def ingest_include(store: str, categories=None, keys=None, work: str | None = No
         files = include_files(categories, keys)
     if shard is not None:
         files = sorted(files, key=lambda f: (-f["size"], f["key"]))[shard[0]::shard[1]]
+    elif member is not None:
+        files = include_order(files, member, members)
     print(f"[include] {len(files)} zips, {sum(f['size'] for f in files) / 1e9:.1f} GB, {len(done)} done")
+    deadline = t0 + time_budget_h * 3600 if time_budget_h else None
     for f in files:
         if f["key"] in done:
             continue
-        if time_budget_h and time.time() - t0 > time_budget_h * 3600:
+        if deadline and time.time() > deadline:
             print("[include] time budget reached; re-run to continue", flush=True)
             break
         local = Path(zip_dir) / f["key"] if zip_dir else None
@@ -237,19 +432,32 @@ def ingest_include(store: str, categories=None, keys=None, work: str | None = No
         else:
             zpath = work_dir / f["key"]
             print(f"[include] downloading {f['key']} ({f['size'] / 1e9:.2f} GB)", flush=True)
+            td = time.time()
             download(f["url"], zpath, size=f["size"])
+            print(f"[include] {f['key']}: {f['size'] / 1e6 / max(1e-6, time.time() - td):.1f} MB/s", flush=True)
         vdir = work_dir / Path(f["key"]).stem
         with zipfile.ZipFile(zpath) as z:
             z.extractall(vdir)
         rows = _include_rows(vdir)
         print(f"[include] {f['key']}: {len(rows)} videos, {len({r['word'] for r in rows})} words", flush=True)
+        finished = True
         if rows:
-            extract_to_store(pd.DataFrame(rows), store, workers=workers)
+            left = deadline - time.time() if deadline else None
+            finished = extract_to_store(pd.DataFrame(rows), store, workers=workers,
+                                        time_budget_s=left).attrs.get("complete", True)
         shutil.rmtree(vdir, ignore_errors=True)
         if not keep_zips and zpath.parent == work_dir:
             zpath.unlink(missing_ok=True)
+        if not finished:  # its clips are kept; the zip is redone next time and they are skipped
+            print("[include] time budget reached inside a zip; re-run to continue", flush=True)
+            break
         with open(done_log, "a") as fh:
             fh.write(f["key"] + "\n")
+        done.add(f["key"])
+    if shard is None and not categories and not keys and all(f["key"] in done for f in files):
+        print(f"[include] complete: {mark_complete(store, source='include', zips=len(files))}", flush=True)
+        return True
+    return False
 
 
 # ----------------------------------------------------------------------------------
@@ -391,12 +599,19 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="source", required=True)
     p = sub.add_parser("isl40")
     p.add_argument("--root", default=None, help="local folder with metadata.csv (else HF download)")
+    p.add_argument("--revision", default=None, help="HF commit/branch/tag to pin")
     p.add_argument("--time-budget-h", type=float, default=None)
     p = sub.add_parser("include")
     p.add_argument("--categories", nargs="*", default=None)
     p.add_argument("--files", nargs="*", default=None, help="exact zip names, e.g. Greetings_1of2.zip")
     p.add_argument("--zip-dir", default=None, help="use already-downloaded zips from here")
     p.add_argument("--keep-zips", action="store_true")
+    p.add_argument("--time-budget-h", type=float, default=None)
+    p.add_argument("--member", type=int, default=None, help="take every zip, starting with this member's share")
+    p.add_argument("--members", type=int, default=1)
+    p = sub.add_parser("include_words", help="a few INCLUDE labels, fetched from inside the remote zips")
+    p.add_argument("--words", nargs="+", required=True, help="LABEL=word, e.g. House=home I=me Brother=brother")
+    p.add_argument("--categories", nargs="*", default=None, help="only look in these zips (faster)")
     p.add_argument("--time-budget-h", type=float, default=None)
     p = sub.add_parser("isl_dictionary")
     p.add_argument("--vocab-from", nargs="*", default=None, help="stores whose words define the vocabulary")
@@ -424,10 +639,13 @@ def main(argv=None):
 
     shard = parse_shard(a.shard)
     if a.source == "isl40":
-        ingest_isl40(a.store, a.root, a.workers, shard, getattr(a, "time_budget_h", None))
+        ingest_isl40(a.store, a.root, a.workers, shard, a.time_budget_h, a.revision, a.work)
     elif a.source == "include":
         ingest_include(a.store, a.categories, a.files, a.work, a.zip_dir, a.workers, a.keep_zips,
-                       a.time_budget_h, shard)
+                       a.time_budget_h, shard, a.member, a.members)
+    elif a.source == "include_words":
+        ingest_include_words(a.store, dict(w.split("=", 1) for w in a.words), a.categories, a.work, a.workers,
+                             a.time_budget_h)
     elif a.source == "isl_dictionary":
         vocab = vocab_from_stores(a.vocab_from) if a.vocab_from else set()
         vocab |= {normalize_word(v) for v in (a.vocab or [])}

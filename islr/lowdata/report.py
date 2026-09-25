@@ -157,6 +157,31 @@ def checks(df: pd.DataFrame) -> str:
     return "\n".join(lines) + "\n"
 
 
+def data_checks(outs: list[str]) -> str:
+    """Compare the stores each member trained on (written by the notebook from
+    `lowdata.py data`). Different fingerprints mean different clip tables, hence
+    different splits, so results from those members must not be pooled."""
+    import json
+
+    seen = {}
+    for o in outs:
+        for f in sorted(Path(o).glob("_sweep/data_member*.json")):
+            seen[f"{Path(o).parent.name}/{f.stem}"] = json.loads(f.read_text())
+    if not seen:
+        return ""
+    lines = ["\n## Data used by each member\n", "| member output | store | clips | words | keys |", "|---|---|---|---|---|"]
+    per_store = {}
+    for who, st in seen.items():
+        for name, info in st.items():
+            lines.append(f"| {who} | {name} | {info.get('n_clips')} | {info.get('n_words')} | {info.get('keys_sha1')} |")
+            per_store.setdefault(name, set()).add(info.get("keys_sha1"))
+    bad = [n for n, v in per_store.items() if len(v) > 1]
+    lines.append("")
+    lines.append(f"**Members used different data for {', '.join(bad)}: their splits differ - do not pool them.**"
+                 if bad else "Every member used identical stores: OK")
+    return "\n".join(lines) + "\n"
+
+
 def plots(summ: pd.DataFrame, dest: Path) -> list[str]:
     try:
         import matplotlib
@@ -208,7 +233,7 @@ def main(argv=None) -> int:
     md = markdown_tables(summ)
     (dest / "summary.md").write_text(md, encoding="utf-8")
     (dest / "paired.md").write_text(paired(df, a.reference), encoding="utf-8")
-    (dest / "checks.md").write_text(checks(df), encoding="utf-8")
+    (dest / "checks.md").write_text(checks(df) + data_checks(a.out), encoding="utf-8")
     figs = plots(summ, dest)
     print(md)
     print(f"[report] {len(df)} runs -> {dest} ({', '.join(['summary.md', 'paired.md', 'checks.md'] + figs)})")

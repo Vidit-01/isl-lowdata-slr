@@ -2,6 +2,7 @@
 
     python lowdata.py smoke                      # every model + protocols + DDP, one command
     python lowdata.py sources list               # INCLUDE zips on Zenodo
+    python lowdata.py data --grid islr/lowdata/configs/isl40_scarce.json --dest stores   # one member's data
     python lowdata.py sources isl40 --root ISL_DATASET_40WORDS --store outputs/stores/isl40
     python lowdata.py run --stores outputs/stores/isl40 --model partformer --protocol scarce --shots 4
     python lowdata.py sweep --grid islr/lowdata/configs/scarce_words.json --out sweeps/scarce
@@ -23,6 +24,7 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 COMMANDS = {
     "extract": "islr.lowdata.extract",
     "sources": "islr.lowdata.sources",
+    "data": "islr.lowdata.prepare",
     "run": "islr.lowdata.run",
     "sweep": "islr.lowdata.sweep",
     "report": "islr.lowdata.report",

@@ -7,6 +7,7 @@ Low-data isolated ISL recognition paper code. Study design and status: `docs/stu
 - End-to-end check (the only "test"): `python lowdata.py smoke --fast`. Full version: `python lowdata.py smoke` (~15 min CPU). Skip steps with `--skip ddp sweep ...`, and pick models with `--models partformer kdf_transformer`.
 - One study run: `python lowdata.py run --stores S1 S2 --model partformer --protocol scarce --shots 4 --seed 0 --out runs`
 - Sweep plan: `python lowdata.py sweep --grid islr/lowdata/configs/scarce_legacy8.json --plan --members 4`
+- One member's data (builds, copies or merges the stores a grid lists; no waiting on teammates): `python lowdata.py data --grid islr/lowdata/configs/isl40_scarce.json --dest stores --inputs /kaggle/input`. Kaggle flow: `kaggle/README.md`.
 - Legacy few-shot: `python -m islr.fewshot.train --list`, then `python -m islr.fewshot.train --data-dir ISL_DATASET_40WORDS --models stgcn --epochs 5`
 - No linter config and no pytest suite.
 

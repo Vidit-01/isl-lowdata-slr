@@ -1,0 +1,58 @@
+{
+ "name": "isl40_vocab",
+ "_about": "Does a larger well-resourced vocabulary help or hurt the scarce words? n_words = total vocabulary (targets always kept); null = every eligible word.",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include_words"
+ ],
+ "data": {
+  "isl40": {
+   "revision": "255ce7fd10da5d05bc30d59668ba256e5f02531c"
+  },
+  "include_words": {
+   "words": {
+    "Brother": "brother",
+    "House": "home",
+    "I": "me"
+   },
+   "categories": [
+    "People",
+    "Places",
+    "Pronouns"
+   ]
+  }
+ },
+ "base": {
+  "protocol": "scarce",
+  "targets": "legacy8",
+  "min_clips": 16
+ },
+ "grid": {
+  "model": [
+   "mp_transformer",
+   "ctr_gcn",
+   "hwgat",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   2,
+   8
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ],
+  "n_words": [
+   8,
+   16,
+   null
+  ]
+ },
+ "split_by": "shots"
+}

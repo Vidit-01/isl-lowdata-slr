@@ -22,6 +22,10 @@ What it checks
   9. extraction sharding partitions clips; shard stores merge
  10. extraction worker pool survives a worker that aborts (as MediaPipe's C++ CHECKs do):
      the clip is recorded as failed, the worker replaced, every other clip delivered
+ 11. `lowdata.py data` (one member's data, no waiting): a complete attached store is
+     copied, one from another data revision is refused, partial INCLUDE copies are
+     merged (their finished zips skipped), and the report flags members whose data differ;
+     single clips are read out of a remote zip over HTTP byte ranges (include_words)
 It never uses two GPU jobs at once (DDP here is CPU-only unless --device cuda).
 """
 from __future__ import annotations
@@ -398,6 +402,109 @@ def check_extract_crash():
     return "3 aborts recorded, 17 clips delivered"
 
 
+def check_remote_zip(out):
+    """include_words' fetch path against a local HTTP server that honours Range."""
+    import http.server
+    import threading
+    import zipfile
+
+    from islr.lowdata.sources import HttpRangeFile, fetch_zip_member
+
+    out = Path(out)
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    rng = np.random.default_rng(0)
+    blobs = {"People/66. Brother/MVI_1.MOV": rng.bytes(700_000),                 # incompressible
+             "People/66. Brother/MVI_2.MOV": b"abc" * 400_000,                   # compressible
+             "Places/19. House/MVI_3.MP4": rng.bytes(1000)}
+    zpath = out / "People_1of1.zip"
+    with zipfile.ZipFile(zpath, "w") as z:
+        for i, (name, data) in enumerate(blobs.items()):
+            z.writestr(name, data, compress_type=zipfile.ZIP_STORED if i == 0 else zipfile.ZIP_DEFLATED)
+    body = zpath.read_bytes()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            a, b = self.headers["Range"].split("=")[1].split("-")
+            a, b = int(a), min(len(body) - 1, int(b) if b else len(body) - 1)
+            self.send_response(206)
+            self.send_header("Content-Length", str(b - a + 1))
+            self.end_headers()
+            self.wfile.write(body[a:b + 1])
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{srv.server_port}/People_1of1.zip"
+        with zipfile.ZipFile(HttpRangeFile(url, len(body), block=4096)) as z:
+            infos = z.infolist()
+        for zi in infos:
+            got = fetch_zip_member(url, zi, out / "got" / zi.filename, connections=3, size=len(body)).read_bytes()
+            assert got == blobs[zi.filename], zi.filename
+    finally:
+        srv.shutdown()
+    return f"{len(infos)} members (stored + deflated) read over HTTP ranges, bytes identical"
+
+
+def check_data(stores, out):
+    import islr.lowdata.prepare as prep
+    from islr.lowdata.report import data_checks
+    from islr.lowdata.store import completion, mark_complete, merge_stores, store_fingerprint
+
+    out = Path(out)
+    if out.exists():
+        shutil.rmtree(out)
+    # a teammate's output holding a complete store, built from revision "r1"
+    mate = out / "input" / "mate-output" / "stores" / "isl40"
+    merge_stores([stores[0]], str(mate))
+    mark_complete(mate, source="isl40", revision="r1")
+    grid = {"stores": ["$STORES/isl40"], "data": {"isl40": {"revision": "r1"}}}
+    st = prep.prepare(grid, out / "me", inputs=[str(out / "input")])
+    assert st["isl40"]["complete"] and st["isl40"]["how"].startswith("copied"), st
+    assert st["isl40"]["keys_sha1"] == store_fingerprint(mate)["keys_sha1"]
+    assert prep.prepare(grid, out / "me", inputs=[str(out / "input")])["isl40"]["how"] == "already here"
+
+    built = []
+
+    def fake_build(name, store, opts, left_h, member, members, workers, work):
+        built.append((name, member))
+        mark_complete(store, source=name, revision=opts.get("revision"))
+        return True
+
+    real_build, prep.build = prep.build, fake_build
+    try:
+        # another data version: the teammate's copy must not be used
+        st = prep.prepare({"stores": ["$STORES/isl40"], "data": {"isl40": {"revision": "r2"}}},
+                          out / "me2", inputs=[str(out / "input")])
+        assert built == [("isl40", 0)] and st["isl40"]["how"] == "built here", (built, st)
+        # INCLUDE: two partial copies (different zips done) are merged before building
+        for i, zips in enumerate((["A.zip"], ["B.zip", "C.zip"])):
+            part = out / "input" / f"member{i}-output" / "stores" / f"include_shard{i}"
+            merge_stores([stores[1]], str(part))
+            (part / "include_done.txt").write_text("".join(z + chr(10) for z in zips))
+        st = prep.prepare({"stores": ["$STORES/include"]}, out / "me3", member=2, members=4,
+                          inputs=[str(out / "input")])
+        done = sorted((out / "me3" / "include" / "include_done.txt").read_text().split())
+        assert done == ["A.zip", "B.zip", "C.zip"] and built[-1] == ("include", 2), (done, built)
+        assert completion(out / "me3" / "include")
+    finally:
+        prep.build = real_build
+    # report: two members with the same data, one with different data
+    for who, fp in (("m0", "aaa"), ("m1", "aaa"), ("m2", "bbb")):
+        d = out / who / "sweeps" / "_sweep"
+        d.mkdir(parents=True)
+        (d / "data_member0.json").write_text(json.dumps({"isl40": {"n_clips": 5, "n_words": 2, "keys_sha1": fp}}))
+    txt = data_checks([str(out / w / "sweeps") for w in ("m0", "m1")])
+    assert "identical stores: OK" in txt, txt
+    txt = data_checks([str(out / w / "sweeps") for w in ("m0", "m1", "m2")])
+    assert "different data for isl40" in txt, txt
+    return f"copy / revision guard / INCLUDE merge ({len(done)} zips) / report check OK"
+
+
 def check_sharding(stores, out):
     from islr.lowdata.extract import in_shard
     from islr.lowdata.store import merge_stores, read_index
@@ -419,7 +526,7 @@ def main(argv=None) -> int:
     p.add_argument("--steps", type=int, default=None, help="training steps per model (default 150, fast 80)")
     p.add_argument("--models", nargs="*", default=None)
     p.add_argument("--device", default="cpu")
-    p.add_argument("--skip", nargs="*", default=[], help="stores protocols banks models rgb engine resume ddp sweep shard extract")
+    p.add_argument("--skip", nargs="*", default=[], help="stores protocols banks models rgb engine resume ddp sweep shard extract data")
     a = p.parse_args(argv)
     if a.device == "cpu":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # also for sweep workers ("" is dropped on Windows)
@@ -464,6 +571,9 @@ def main(argv=None) -> int:
         C("extraction shards + merge", lambda: check_sharding(stores, root))
     if "extract" not in sk:
         C("extraction survives worker abort", check_extract_crash)
+    if "data" not in sk:
+        C("member data step (copy / build / merge)", lambda: check_data(stores, root / "member_data"))
+        C("clips from inside a remote zip", lambda: check_remote_zip(root / "remote_zip"))
 
     if results:
         print("\nmodel                   top1   proto  chance  params   train_s")

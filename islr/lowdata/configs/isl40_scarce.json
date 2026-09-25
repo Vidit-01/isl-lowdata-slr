@@ -1,0 +1,64 @@
+{
+ "name": "isl40_scarce",
+ "_about": "Main experiment on the 40-word corpus (plus INCLUDE clips for three of its thin words, fetched from inside the zips): the 8 legacy words get K training clips, the other words keep their whole pool (~10 clips after the signer-independent test split). min_clips 16 keeps the words with >= 16 clips (32: 29 from the corpus, plus brother, home and me from INCLUDE Brother, House, I); the other thin words join once recorded (bump data.isl40.revision so every member uses the same corpus). One K per member.",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include_words"
+ ],
+ "data": {
+  "isl40": {
+   "revision": "255ce7fd10da5d05bc30d59668ba256e5f02531c"
+  },
+  "include_words": {
+   "words": {
+    "Brother": "brother",
+    "House": "home",
+    "I": "me"
+   },
+   "categories": [
+    "People",
+    "Places",
+    "Pronouns"
+   ]
+  }
+ },
+ "base": {
+  "protocol": "scarce",
+  "targets": "legacy8",
+  "min_clips": 16
+ },
+ "grid": {
+  "model": [
+   "mp_bilstm",
+   "mp_transformer",
+   "stgcn",
+   "ctr_gcn",
+   "td_gcn",
+   "hwgat",
+   "fft_bilstm",
+   "cwt_bilstm",
+   "cwt_transformer",
+   "pgf_slr",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "kdf_transformer_nodmd",
+   "kdf_transformer_nokc",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   1,
+   2,
+   4,
+   8
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ]
+ },
+ "split_by": "shots"
+}

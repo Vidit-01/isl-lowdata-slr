@@ -268,16 +268,54 @@ def load_stores(stores: list[str], sources: list[str] | None = None, words: list
 
 
 def merge_stores(srcs: list[str], dst: str) -> pd.DataFrame:
-    """Copy several stores (e.g. one per team member's extraction shard) into one."""
+    """Copy several stores (a teammate's output, a previous session, extraction shards)
+    into one. Progress logs (`*_done.txt`, e.g. the INCLUDE zips already processed) are
+    unioned too, so the merged store skips work any of them finished."""
     import shutil
 
     out = init_store(dst)
     rows = []
     for s in srcs:
+        s = Path(s)
+        for log in s.glob("*_done.txt"):
+            mine = out / log.name
+            have = set(mine.read_text().split()) if mine.exists() else set()
+            new = [k for k in log.read_text().split() if k not in have]
+            if new:
+                with open(mine, "a") as f:
+                    f.writelines(k + "\n" for k in new)
+        if not (s / "index.csv").exists():
+            continue
         idx = read_index(s)
         for p in idx["path"]:
             target = out / p
             if not target.exists():
-                shutil.copy2(Path(s) / p, target)
+                shutil.copy2(s / p, target)
         rows.append(idx.drop(columns=["abs_path", "store"]))
     return append_index(out, pd.concat(rows, ignore_index=True)) if rows else pd.DataFrame()
+
+
+COMPLETE = "COMPLETE.json"
+
+
+def store_fingerprint(store: str | Path) -> dict:
+    """Clip count + hash of the clip keys. Two members whose stores have the same
+    fingerprint get identical splits (test sets, training subsets) for every seed."""
+    idx = read_index(store) if (Path(store) / "index.csv").exists() else pd.DataFrame({"key": []})
+    keys = sorted(idx["key"])
+    return {"n_clips": len(keys), "n_words": int(idx["word"].nunique()) if len(idx) else 0,
+            "keys_sha1": hashlib.sha1("\n".join(keys).encode()).hexdigest()[:12]}
+
+
+def mark_complete(store: str | Path, **extra) -> dict:
+    """Written when a source has been ingested completely (not stopped by a time budget)."""
+    import time
+
+    info = dict(store_fingerprint(store), finished=time.strftime("%Y-%m-%d %H:%M:%S"), **extra)
+    (Path(store) / COMPLETE).write_text(json.dumps(info, indent=1))
+    return info
+
+
+def completion(store: str | Path) -> dict | None:
+    f = Path(store) / COMPLETE
+    return json.loads(f.read_text()) if f.exists() else None
