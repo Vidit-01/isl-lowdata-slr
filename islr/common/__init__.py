@@ -26,7 +26,7 @@ def default_dataset_dir() -> Path:
     cwd = Path.cwd()
     if (cwd / "metadata.csv").exists():
         return cwd.resolve()
-    for name in ("ISL_DATASET", "ISL_DATASET_8WORDS"):
+    for name in ("ISL_DATASET", "ISL_DATASET_8WORDS", "ISL_DATASET_30WORDS", "ISL_DATASET_40WORDS"):
         candidate = ROOT / name
         if (candidate / "metadata.csv").exists():
             return candidate.resolve()
@@ -51,8 +51,7 @@ def load_metadata(min_clips: int = 1, dataset_dir: str | Path | None = None) -> 
         df["video_path"]
         .astype(str)
         .str.replace("\\", "/", regex=False)
-        .str.replace(r"^.*?ISL_DATASET_8WORDS/", "", regex=True)
-        .str.replace(r"^.*?ISL_DATASET/", "", regex=True)
+        .str.replace(r"^.*?ISL_DATASET[^/]*/", "", regex=True)
     )
     counts = df.groupby("word").size()
     keep = counts[counts >= min_clips].index

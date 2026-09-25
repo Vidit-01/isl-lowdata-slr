@@ -3,6 +3,8 @@ archives are streamed part by part (download -> extract landmarks -> delete).
 
   isl40          the project's own corpus (HF vidit031/isl-isolated-40words; 642 clips,
                  40 words; ISL500 + INCLUDE + CISLR + ISLRTC clips). Local folder or HF.
+  isl30          the study's 30-word subset in the same format (HF vidit031/isl-isolated-30words;
+                 635 clips, + INCLUDE Brother/I clips). Used by the isl40_* grids.
   include        INCLUDE (AI4Bharat/IITM, Zenodo record 4010759): 263 words, 4,292 videos,
                  ~57 GB in 44 category zips, CC BY 4.0. The project used only 143 of them.
                  Zenodo throttles each connection (~50 KB/s observed), so files are fetched
@@ -19,6 +21,7 @@ archives are streamed part by part (download -> extract landmarks -> delete).
 
     python lowdata.py sources list
     python lowdata.py sources isl40 --root ../IPD/ISL_DATASET_40WORDS --store stores/isl40
+    python lowdata.py sources isl30 --revision d98c5277424bdfdde75108c68deb8e820241c59b --store stores/isl30
     python lowdata.py sources include --store stores/include --files Electronics_2of2.zip
     python lowdata.py sources isl_dictionary --store stores/isl_dict --vocab-from stores/isl40
     python lowdata.py sources gislr --root /kaggle/input/asl-signs --store stores/gislr
@@ -49,6 +52,7 @@ HF_DICT = "silentone0725/Indian_Sign_Language_Data.gov_Rencoded"
 HF_CISLR = "Exploration-Lab/CISLR"
 HF_ISL40 = "vidit031/isl-isolated-40words"
 HF_ISL30 = "vidit031/isl-isolated-30words"  # the study's 30 words (+ INCLUDE Brother/I clips)
+VIDEO_GLOBS = [f"*{e}" for x in sorted(VIDEO_EXTS) for e in (x, x.upper())]
 
 LICENSES = {
     "include": "CC-BY-4.0 (INCLUDE, Zenodo 4010759)",
@@ -262,12 +266,14 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
     `revision` pins the Hugging Face commit, so every member extracts the same corpus.
     Signers named `User<n>` (ISL500) or `team_<name>` (the team's own recordings) are
     kept as identities. Returns True (and writes COMPLETE.json) when every clip is done."""
-    if root is None or not (Path(root) / "metadata.csv").exists():
+    downloaded = root is None or not (Path(root) / "metadata.csv").exists()
+    if downloaded:
         from huggingface_hub import snapshot_download
 
         root = root or str(Path(work or Path(store) / "_download") / Path(store).name)
+        # videos + metadata only: the per-clip .json sidecars would double the request count
         snapshot_download(repo_id=repo, repo_type="dataset", local_dir=root, revision=revision,
-                          token=os.environ.get("HF_TOKEN"))
+                          token=os.environ.get("HF_TOKEN"), allow_patterns=["metadata.csv", *VIDEO_GLOBS])
     root = Path(root)
     meta = pd.read_csv(root / "metadata.csv", dtype=str, keep_default_na=False)
     rows = []
@@ -286,12 +292,17 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
         rows.append({"video_path": str(p), "video_rel": rel, "word": r.word,
                      "source": ds.lower(), "signer": signer, "session": session,
                      "license": r.license})
-    print(f"[isl40] {len(rows)} videos found under {root}")
+    tag = Path(store).name
+    print(f"[{tag}] {repo}: {len(rows)} videos found under {root}")
+    if not rows:
+        raise SystemExit(f"[{tag}] no videos listed in {root / 'metadata.csv'} exist under {root}")
     done = extract_to_store(pd.DataFrame(rows), store, workers=workers, shard=shard,
                             time_budget_s=time_budget_h * 3600 if time_budget_h else None)
     if done.attrs.get("complete") and shard is None:
         info = mark_complete(store, source="isl40", repo=repo, revision=revision or "main", videos=len(rows))
-        print(f"[isl40] complete: {info}", flush=True)
+        print(f"[{tag}] complete: {info}", flush=True)
+        if downloaded:  # the landmarks are in the store; don't keep the videos in the output
+            shutil.rmtree(root, ignore_errors=True)
         return True
     return False
 
@@ -598,10 +609,12 @@ def main(argv=None):
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="source", required=True)
-    p = sub.add_parser("isl40")
-    p.add_argument("--root", default=None, help="local folder with metadata.csv (else HF download)")
-    p.add_argument("--revision", default=None, help="HF commit/branch/tag to pin")
-    p.add_argument("--time-budget-h", type=float, default=None)
+    for name, repo in (("isl40", HF_ISL40), ("isl30", HF_ISL30)):
+        p = sub.add_parser(name, help=f"the project's corpus (default repo {repo})")
+        p.add_argument("--root", default=None, help="local folder with metadata.csv (else HF download)")
+        p.add_argument("--repo", default=repo, help="HF dataset repo in the same format")
+        p.add_argument("--revision", default=None, help="HF commit/branch/tag to pin")
+        p.add_argument("--time-budget-h", type=float, default=None)
     p = sub.add_parser("include")
     p.add_argument("--categories", nargs="*", default=None)
     p.add_argument("--files", nargs="*", default=None, help="exact zip names, e.g. Greetings_1of2.zip")
@@ -639,8 +652,8 @@ def main(argv=None):
         ap.error("--store is required")
 
     shard = parse_shard(a.shard)
-    if a.source == "isl40":
-        ingest_isl40(a.store, a.root, a.workers, shard, a.time_budget_h, a.revision, a.work)
+    if a.source in ("isl40", "isl30"):
+        ingest_isl40(a.store, a.root, a.workers, shard, a.time_budget_h, a.revision, a.work, a.repo)
     elif a.source == "include":
         ingest_include(a.store, a.categories, a.files, a.work, a.zip_dir, a.workers, a.keep_zips,
                        a.time_budget_h, shard, a.member, a.members)
