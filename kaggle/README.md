@@ -37,9 +37,9 @@ The default grids use two small stores, and every member builds them in about 20
 
 * `isl40`: the 40-word corpus (`vidit031/isl-isolated-40words` on Hugging Face, pinned to one commit
   in `"data": {"isl40": {"revision": ...}}`). ~640 clips, downloaded, then MediaPipe on the CPUs.
-* `include_words`: INCLUDE's Brother, House and I clips (62 clips, ~0.8 GB), renamed to the corpus's
-  thin words brother, home and me. Each clip is read straight out of its zip on Zenodo with
-  HTTP byte ranges, so the three category zips (14 GB) are never downloaded. That's about 10 minutes at the
+* `include_words`: INCLUDE's Brother and I clips (42 clips, ~0.55 GB), renamed to the corpus's
+  thin words brother and me. Each clip is read straight out of its zip on Zenodo with
+  HTTP byte ranges, so the category zips (9 GB) are never downloaded. That's under 10 minutes at the
   observed ~1.5 MB/s. The word mapping is in `"data": {"include_words": {"words": ...}}`.
 
 Attaching a teammate's output only saves those minutes.
@@ -84,14 +84,15 @@ output. Attaching it is optional for them.
 | `scarce_legacy8.json`, `uniform_k.json`, `vocab.json`, `cross_source.json` | the same questions with INCLUDE and other corpora (needs the INCLUDE store) | see the file |
 | `pretrain_full.json` | all data with DDP; checkpoints can be used for `init_from` | 3 |
 
-With `min_clips: 16`, the 40-word grids use the 32 words that have at least 16 clips today
-(29 from the corpus, plus brother, home and me from INCLUDE).
+The grids fix the vocabulary at **30 words** (`base.words`): the corpus's words with at least 16
+clips and at least 4 signers, including brother and me topped up from INCLUDE. Left out are the 8 thin
+words (sorry, come, stop, goodbye, read, write, stand, when) and home and hospital (2 signers each).
 After the test split, each rich word has about 10 training clips, so K stops at 8.
 
 ### Adding the team's own recordings
 
-INCLUDE covers brother, home and me. For the other thin words (stand, when, goodbye, read, write,
-come, stop, sorry), no open dataset has more than one or two clips. FDMSE-ISL (RKMVERI) has about 20
+For the thin words (stand, when, goodbye, read, write, come, stop, sorry), no open dataset has more
+than one or two clips. To add them later, extend `base.words` in the grids. FDMSE-ISL (RKMVERI) has about 20
 per word for all of them except goodbye. Access is by request with an institutional email, and its
 terms forbid redistribution, so those clips may only go into a private store, never the public
 Hugging Face corpus. Otherwise, record them:

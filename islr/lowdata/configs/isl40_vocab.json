@@ -12,12 +12,10 @@
   "include_words": {
    "words": {
     "Brother": "brother",
-    "House": "home",
     "I": "me"
    },
    "categories": [
     "People",
-    "Places",
     "Pronouns"
    ]
   }
@@ -25,7 +23,39 @@
  "base": {
   "protocol": "scarce",
   "targets": "legacy8",
-  "min_clips": 16
+  "min_clips": 16,
+  "words": [
+   "brother",
+   "drink",
+   "eat",
+   "father",
+   "food",
+   "friend",
+   "go",
+   "he",
+   "hello",
+   "help",
+   "market",
+   "me",
+   "mother",
+   "no",
+   "okay",
+   "please",
+   "school",
+   "she",
+   "sister",
+   "sit",
+   "student",
+   "tea",
+   "teacher",
+   "thank you",
+   "today",
+   "water",
+   "what",
+   "where",
+   "yes",
+   "you"
+  ]
  },
  "grid": {
   "model": [

@@ -1,6 +1,6 @@
 {
  "name": "isl40_scarce",
- "_about": "Main experiment on the 40-word corpus (plus INCLUDE clips for three of its thin words, fetched from inside the zips): the 8 legacy words get K training clips, the other words keep their whole pool (~10 clips after the signer-independent test split). min_clips 16 keeps the words with >= 16 clips (32: 29 from the corpus, plus brother, home and me from INCLUDE Brother, House, I); the other thin words join once recorded (bump data.isl40.revision so every member uses the same corpus). One K per member.",
+ "_about": "Main experiment, 30 words (base.words): the 40-word corpus's words with >= 16 clips and >= 4 signers, brother and me topped up with INCLUDE's Brother and I clips (fetched from inside the zips). The 8 legacy words get K training clips, the other 22 keep their whole pool (~10 clips after the signer-independent test split). One K per member.",
  "stores": [
   "$STORES/isl40",
   "$STORES/include_words"
@@ -12,12 +12,10 @@
   "include_words": {
    "words": {
     "Brother": "brother",
-    "House": "home",
     "I": "me"
    },
    "categories": [
     "People",
-    "Places",
     "Pronouns"
    ]
   }
@@ -25,7 +23,39 @@
  "base": {
   "protocol": "scarce",
   "targets": "legacy8",
-  "min_clips": 16
+  "min_clips": 16,
+  "words": [
+   "brother",
+   "drink",
+   "eat",
+   "father",
+   "food",
+   "friend",
+   "go",
+   "he",
+   "hello",
+   "help",
+   "market",
+   "me",
+   "mother",
+   "no",
+   "okay",
+   "please",
+   "school",
+   "she",
+   "sister",
+   "sit",
+   "student",
+   "tea",
+   "teacher",
+   "thank you",
+   "today",
+   "water",
+   "what",
+   "where",
+   "yes",
+   "you"
+  ]
  },
  "grid": {
   "model": [
