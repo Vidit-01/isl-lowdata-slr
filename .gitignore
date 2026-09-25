@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Data (hosted on Hugging Face: vidit031/isl-isolated-8words, vidit031/isl-isolated-40words)
+ISL_DATASET*/
+!ISL_DATASET_8WORDS/
+ISL_DATASET_8WORDS/*
+!ISL_DATASET_8WORDS/README.md
+!ISL_DATASET_8WORDS/metadata.csv
+.cache/
+
+# Generated landmark stores, MediaPipe models, training outputs
+lowdata_work/
+*.task
+*.npy
+*.pt
+*.pth
+weights/
+checkpoints/
