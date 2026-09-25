@@ -1,13 +1,16 @@
 """Video -> MediaPipe Holistic -> landmark store (see store.py). CPU bound, resumable.
 
 Works with both MediaPipe APIs:
-  * Tasks API `HolisticLandmarker` (mediapipe >= 0.10.14; the only one on recent
-    Python / Kaggle images). Needs `holistic_landmarker.task`, downloaded on first use.
-  * legacy `mp.solutions.holistic` (mediapipe < 0.10.15), used by the old pipeline.
+  * legacy `mp.solutions.holistic` (present up to mediapipe 0.10.21, which the Kaggle
+    notebook pins). Preferred: the old pipeline used it, and it does not have the Tasks
+    graph's "Check failed: holder_ != nullptr The packet is empty" abort.
+  * Tasks API `HolisticLandmarker`, used only when `solutions` is missing (newer
+    mediapipe) or MP_BACKEND=tasks. Needs `holistic_landmarker.task`, downloaded on first use.
 
 One MediaPipe graph per worker process and a fresh graph per video, so tracking state
-never leaks between clips. Clips whose .npy already exists are skipped, so a killed
-run (Kaggle 12 h limit) resumes where it stopped.
+never leaks between clips. A MediaPipe C++ abort kills only its worker: that clip is
+recorded in failed.txt and the worker is replaced. Clips whose .npy already exists are
+skipped, so a killed run (Kaggle 12 h limit) resumes where it stopped.
 
     python lowdata.py extract --videos-csv videos.csv --store stores/mine
     python lowdata.py extract --folder my_videos/ --source mine --store stores/mine
@@ -50,12 +53,13 @@ def _backend() -> str:
     if forced:
         return forced
     try:
-        from mediapipe.tasks.python import vision  # noqa: F401
-        if hasattr(vision, "HolisticLandmarker"):
-            return "tasks"
+        import mediapipe as mp
+
+        if hasattr(getattr(mp, "solutions", None), "holistic"):
+            return "solutions"
     except Exception:
         pass
-    return "solutions"
+    return "tasks"
 
 
 def _fill(out: np.ndarray, t: int, start: int, count: int, lms) -> None:
@@ -141,6 +145,83 @@ def extract_video(path: str, stride: int | None = None, max_frames: int = 256) -
     return out, float(fps) / stride
 
 
+def _worker_loop(slot, tasks, results, current, backend, task_path, max_side, job):
+    """Runs in a worker process. `current[slot]` is shared memory, written before each
+    clip, so the parent still knows which clip was in flight if MediaPipe aborts."""
+    _init_worker(backend, task_path, max_side)
+    while True:
+        item = tasks.get()
+        if item is None:
+            return
+        idx, args = item
+        current[slot] = idx
+        results.put((idx, job(args)))
+        current[slot] = -1
+
+
+def _run_pool(todo, workers, backend, task, max_side, time_budget_s, on_result, job=None):
+    """Like Pool.imap_unordered(_job, todo), but survives workers that die (MediaPipe
+    CHECK failures call abort(), which no try/except can catch and which makes a
+    multiprocessing.Pool wait forever for the lost task). Returns True if stopped by
+    the time budget."""
+    from multiprocessing import get_context
+
+    ctx = get_context("spawn")
+    # SimpleQueue writes straight to the pipe: a result put just before the next clip's
+    # abort is not lost (Queue's feeder thread would die with the unsent message)
+    tasks, results = ctx.Queue(), ctx.SimpleQueue()
+    current = ctx.Array("l", [-1] * workers, lock=False)
+    for item in enumerate(todo):
+        tasks.put(item)
+    for _ in range(workers):
+        tasks.put(None)
+
+    def start(slot):
+        pr = ctx.Process(target=_worker_loop, daemon=True,
+                         args=(slot, tasks, results, current, backend, task, max_side, job or _job))
+        pr.start()
+        return pr
+
+    procs = [start(k) for k in range(workers)]
+    seen: set[int] = set()
+    t0 = time.time()
+
+    def deliver(idx, res):
+        if idx not in seen:
+            seen.add(idx)
+            on_result(res)
+
+    try:
+        while True:
+            if time_budget_s and time.time() - t0 > time_budget_s:
+                return True
+            if not results.empty():
+                deliver(*results.get())
+                continue
+            time.sleep(0.5)
+            alive = False
+            for k, pr in enumerate(procs):
+                if pr.is_alive():
+                    alive = True
+                elif pr.exitcode != 0:  # died mid-clip: record it, replace the worker
+                    idx = current[k]
+                    current[k] = -1
+                    if idx >= 0:
+                        deliver(idx, (todo[idx][1], 0, 0.0,
+                                      f"worker crashed (exit code {pr.exitcode}): MediaPipe abort on {todo[idx][0]}"))
+                    procs[k] = start(k)
+                    alive = True
+            if not alive:  # every worker got its sentinel and exited cleanly
+                while not results.empty():
+                    deliver(*results.get())
+                return False
+    finally:
+        for pr in procs:
+            if pr.is_alive():
+                pr.terminate()
+        tasks.cancel_join_thread()  # unsent clips after a budget stop must not block exit
+
+
 def _job(args):
     video, npy, stride = args
     try:
@@ -178,8 +259,6 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
 
     shard=(i, n) keeps only the clips of shard i, so n people can extract one corpus
     in parallel into n stores and merge them (`sources merge`)."""
-    from multiprocessing import get_context
-
     store = init_store(store)
     v = videos.copy()
     for col in ("signer", "session", "split", "license"):
@@ -202,19 +281,23 @@ def extract_to_store(videos: pd.DataFrame, store: str | Path, workers: int | Non
     failed = []
     t0 = time.time()
     if todo:
-        with get_context("spawn").Pool(workers, _init_worker, (backend, task, max_side)) as pool:
-            for i, (npy, n, fps, err) in enumerate(pool.imap_unordered(_job, todo), 1):
-                if err:
-                    failed.append((npy, err))
-                else:
-                    fps_by_path[npy] = fps
-                if i % 20 == 0 or i == len(todo):
-                    rate = i / max(1e-6, time.time() - t0)
-                    print(f"[extract] {i}/{len(todo)} {rate:.2f} vid/s failed={len(failed)}", flush=True)
-                if time_budget_s and time.time() - t0 > time_budget_s:
-                    print("[extract] time budget reached; stopping (re-run to resume)", flush=True)
-                    pool.terminate()
-                    break
+        count = [0]
+
+        def on_result(r):
+            npy, n, fps, err = r
+            count[0] += 1
+            if err:
+                failed.append((npy, err))
+                if err.startswith("worker crashed"):
+                    print(f"[extract] {err}", flush=True)
+            else:
+                fps_by_path[npy] = fps
+            if count[0] % 20 == 0 or count[0] == len(todo):
+                rate = count[0] / max(1e-6, time.time() - t0)
+                print(f"[extract] {count[0]}/{len(todo)} {rate:.2f} vid/s failed={len(failed)}", flush=True)
+
+        if _run_pool(todo, workers, backend, task, max_side, time_budget_s, on_result):
+            print("[extract] time budget reached; stopping (re-run to resume)", flush=True)
     if failed:
         with open(store / "failed.txt", "a", encoding="utf-8") as f:
             f.writelines(f"{p}\t{e}\n" for p, e in failed)

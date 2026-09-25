@@ -20,6 +20,8 @@ What it checks
   8. sweep: member split covers every job exactly once, runs, skips finished jobs;
      report aggregates the result
   9. extraction sharding partitions clips; shard stores merge
+ 10. extraction worker pool survives a worker that aborts (as MediaPipe's C++ CHECKs do):
+     the clip is recorded as failed, the worker replaced, every other clip delivered
 It never uses two GPU jobs at once (DDP here is CPU-only unless --device cuda).
 """
 from __future__ import annotations
@@ -374,6 +376,28 @@ def check_sweep(stores, out, device):
     return f"{len(jobs)} jobs over 2 members, resume + report OK"
 
 
+def _crashing_job(args):
+    """Stand-in for extract._job in check_extract_crash (module level so spawn can pickle it)."""
+    video, npy, _ = args
+    if video.endswith("crash"):
+        os.abort()  # what "Check failed: holder_ != nullptr" does inside MediaPipe
+    return npy, 10, 15.0, None
+
+
+def check_extract_crash():
+    from islr.lowdata.extract import _run_pool
+
+    names = [f"v{i}" + ("crash" if i in (2, 7, 8) else "") for i in range(20)]
+    todo = [(n, n + ".npy", None) for n in names]
+    got = []
+    stopped = _run_pool(todo, 2, "solutions", None, 640, 300, got.append, job=_crashing_job)
+    errs = sorted(r[0] for r in got if r[3])
+    assert not stopped, "hit the time budget: the pool hung"
+    assert len(got) == 20 and len({r[0] for r in got}) == 20, f"{len(got)} results for 20 clips"
+    assert errs == ["v2crash.npy", "v7crash.npy", "v8crash.npy"], errs
+    return "3 aborts recorded, 17 clips delivered"
+
+
 def check_sharding(stores, out):
     from islr.lowdata.extract import in_shard
     from islr.lowdata.store import merge_stores, read_index
@@ -395,7 +419,7 @@ def main(argv=None) -> int:
     p.add_argument("--steps", type=int, default=None, help="training steps per model (default 150, fast 80)")
     p.add_argument("--models", nargs="*", default=None)
     p.add_argument("--device", default="cpu")
-    p.add_argument("--skip", nargs="*", default=[], help="stores protocols banks models rgb engine resume ddp sweep shard")
+    p.add_argument("--skip", nargs="*", default=[], help="stores protocols banks models rgb engine resume ddp sweep shard extract")
     a = p.parse_args(argv)
     if a.device == "cpu":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # also for sweep workers ("" is dropped on Windows)
@@ -438,6 +462,8 @@ def main(argv=None) -> int:
         C("sweep member split + resume + report", lambda: check_sweep(stores, root / "sweep", a.device))
     if "shard" not in sk:
         C("extraction shards + merge", lambda: check_sharding(stores, root))
+    if "extract" not in sk:
+        C("extraction survives worker abort", check_extract_crash)
 
     if results:
         print("\nmodel                   top1   proto  chance  params   train_s")
