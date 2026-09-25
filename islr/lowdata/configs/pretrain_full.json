@@ -1,0 +1,27 @@
+{
+ "name": "pretrain_full",
+ "_about": "Large-data runs (all clips, all words) with DDP over both T4s; their model.pt can seed low-data runs via init_from.",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include"
+ ],
+ "base": {
+  "protocol": "full",
+  "max_steps": 20000,
+  "ddp": true
+ },
+ "grid": {
+  "model": [
+   "kdf_transformer",
+   "partformer",
+   "kdf_partformer"
+  ],
+  "shots": [
+   null
+  ],
+  "seed": [
+   0
+  ]
+ },
+ "split_by": "model"
+}

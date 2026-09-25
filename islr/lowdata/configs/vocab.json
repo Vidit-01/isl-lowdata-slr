@@ -1,0 +1,50 @@
+{
+ "name": "vocab",
+ "_about": "Does a larger well-resourced vocabulary help or hurt the scarce words? n_words = total vocabulary size (targets always kept).",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include"
+ ],
+ "base": {
+  "protocol": "scarce",
+  "targets": "legacy8"
+ },
+ "grid": {
+  "model": [
+   "mp_transformer",
+   "ctr_gcn",
+   "hwgat",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   2,
+   8
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ]
+ },
+ "variants": [
+  {
+   "n_words": 8
+  },
+  {
+   "n_words": 20
+  },
+  {
+   "n_words": 50
+  },
+  {
+   "n_words": 100
+  },
+  {}
+ ],
+ "split_by": "shots"
+}

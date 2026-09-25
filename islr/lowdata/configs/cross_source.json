@@ -1,0 +1,42 @@
+{
+ "name": "cross_source",
+ "_about": "Train on one corpus, test on another (domain shift). Source names come from the store index: check `python lowdata.py inspect --stores ...` first.",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include"
+ ],
+ "base": {
+  "protocol": "cross_source",
+  "train_sources": [
+   "include"
+  ],
+  "test_sources": [
+   "isl500"
+  ]
+ },
+ "grid": {
+  "model": [
+   "mp_transformer",
+   "ctr_gcn",
+   "hwgat",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   1,
+   4,
+   16,
+   null
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ]
+ },
+ "split_by": "shots"
+}

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "islr"
+version = "0.1.0"
+description = "Low-data isolated Indian Sign Language recognition: baselines, KDF, PartFormer, and the low-data study"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["islr*"]
+
+[tool.setuptools.package-data]
+"islr.lowdata" = ["configs/*.json"]

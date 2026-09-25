@@ -1,0 +1,10 @@
+dataset,license,redistribution,citation,notes,downloadable
+INCLUDE,CC-BY-4.0,allowed_with_attribution,"@inproceedings{sridhar_include_2020,...}",Category zip files on Zenodo; train/test CSVs included,yes
+CISLR,research (see HF card),check_license,"@inproceedings{cislr-2022,...}",Scraped from ISLRTC + indiansignlanguage.org YouTube dictionaries,yes
+iSign / ISLTranslate,research non-commercial,research_only_no_commercial,"@inproceedings{iSign-2024,...}",Continuous translation; isolated via CISLR subset,yes
+ISL-DATA (ISL500),see HF card,check_license,ISL500/ISL-DATA Hugging Face,,yes
+ISLRTC Indian Sign Language Dictionary (data.gov.in),Government open data / MIT re-encode (check both),check_data_gov_terms,ISLRTC Indian Sign Language Dictionary,Official dictionary; CISLR also derives from this source — expect overlap,yes
+ISL-CSLTR,CC-BY-4.0,check_license,Elakkiya & Natarajan 2021,Sentence-level; less useful for isolated word extraction without segmentation,yes
+ISL-50,academic/research only,research_only,ISL-50 Zenodo,,yes
+ISL-52,academic/research only,research_only,ISL-52 Zenodo,May overlap heavily with ISL-50,yes
+IIITA-ROBITA ISL Gesture Database,copyright IIITA-ROBITA (request access),restricted,Nandy et al. 2010,Access via lab; not bulk-downloadable without permission,request

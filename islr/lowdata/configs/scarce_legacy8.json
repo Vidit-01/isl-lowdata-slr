@@ -1,0 +1,47 @@
+{
+ "name": "scarce_legacy8",
+ "_about": "Main experiment: the 8 legacy words get K training clips each, every other word keeps its whole pool. Split between members by K.",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include"
+ ],
+ "base": {
+  "protocol": "scarce",
+  "targets": "legacy8"
+ },
+ "grid": {
+  "model": [
+   "mp_bilstm",
+   "mp_transformer",
+   "stgcn",
+   "ctr_gcn",
+   "td_gcn",
+   "hwgat",
+   "fft_bilstm",
+   "cwt_bilstm",
+   "cwt_transformer",
+   "pgf_slr",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "kdf_transformer_nodmd",
+   "kdf_transformer_nokc",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   1,
+   2,
+   4,
+   8,
+   16
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ]
+ },
+ "split_by": "shots"
+}

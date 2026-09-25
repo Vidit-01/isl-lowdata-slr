@@ -1,0 +1,87 @@
+original_label,normalized_word,dataset,review_status
+thank you,thank you,CISLR,accepted
+teacher,teacher,CISLR,accepted
+sorry,sorry,CISLR,accepted
+mother,mother,CISLR,accepted
+stand,stand,CISLR,accepted
+today,today,CISLR,accepted
+me,me,CISLR,accepted
+sit,sit,CISLR,accepted
+home,home,CISLR,accepted
+what,what,CISLR,accepted
+water,water,CISLR,accepted
+drink,drink,CISLR,accepted
+where,where,CISLR,accepted
+she,she,CISLR,accepted
+no,no,CISLR,accepted
+eat,eat,CISLR,accepted
+read,read,CISLR,accepted
+help,help,CISLR,accepted
+okay,okay,CISLR,accepted
+friend,friend,CISLR,accepted
+stop,stop,CISLR,accepted
+father,father,CISLR,accepted
+come,come,CISLR,accepted
+food,food,CISLR,accepted
+yes,yes,CISLR,accepted
+goodbye,goodbye,CISLR,accepted
+school,school,CISLR,accepted
+go,go,CISLR,accepted
+you,you,CISLR,accepted
+write,write,CISLR,accepted
+he,he,CISLR,accepted
+sister,sister,CISLR,accepted
+brother,brother,CISLR,accepted
+tea,tea,CISLR,accepted
+student,student,CISLR,accepted
+hospital,hospital,CISLR,accepted
+please,please,CISLR,accepted
+when,when,CISLR,accepted
+market,market,CISLR,accepted
+drink,drink,ISL500,accepted
+eat,eat,ISL500,accepted
+father,father,ISL500,accepted
+food,food,ISL500,accepted
+friend,friend,ISL500,accepted
+go,go,ISL500,accepted
+hello,hello,ISL500,accepted
+help,help,ISL500,accepted
+he,he,ISL500,accepted
+market,market,ISL500,accepted
+mother,mother,ISL500,accepted
+no,no,ISL500,accepted
+please,please,ISL500,accepted
+school,school,ISL500,accepted
+she,she,ISL500,accepted
+sister,sister,ISL500,accepted
+sit,sit,ISL500,accepted
+student,student,ISL500,accepted
+teacher,teacher,ISL500,accepted
+tea,tea,ISL500,accepted
+thank you,thank you,ISL500,accepted
+today,today,ISL500,accepted
+water,water,ISL500,accepted
+what,what,ISL500,accepted
+where,where,ISL500,accepted
+yes,yes,ISL500,accepted
+you,you,ISL500,accepted
+school,school,INCLUDE,accepted
+hospital,hospital,INCLUDE,accepted
+market,market,INCLUDE,accepted
+friend,friend,INCLUDE,accepted
+hello,hello,INCLUDE,accepted
+alright,okay,INCLUDE,Needs Manual Review
+thank you,thank you,INCLUDE,accepted
+Bye,goodbye,ISLRTC_dictionary,Needs Manual Review
+Bye_Goodbye,goodbye,ISLRTC_dictionary,accepted
+Cease_Discontinue_Halt_Stop,stop,ISLRTC_dictionary,Needs Manual Review
+Come,come,ISLRTC_dictionary,accepted
+Myself,me,ISLRTC_dictionary,Needs Manual Review
+Okay,okay,ISLRTC_dictionary,accepted
+Read,read,ISLRTC_dictionary,accepted
+Sorry,sorry,ISLRTC_dictionary,accepted
+Sorry_(Sign_2),sorry,ISLRTC_dictionary,accepted
+Stand,stand,ISLRTC_dictionary,accepted
+Stop,stop,ISLRTC_dictionary,accepted
+When_(For_Days),when,ISLRTC_dictionary,Needs Manual Review
+Write,write,ISLRTC_dictionary,accepted

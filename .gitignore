@@ -1,22 +1,46 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
 .venv/
 venv/
 
-# Data (hosted on Hugging Face: vidit031/isl-isolated-8words, vidit031/isl-isolated-40words)
+# Datasets (videos come from Hugging Face; see README)
 ISL_DATASET*/
-!ISL_DATASET_8WORDS/
-ISL_DATASET_8WORDS/*
-!ISL_DATASET_8WORDS/README.md
-!ISL_DATASET_8WORDS/metadata.csv
-.cache/
+dataset/raw_datasets/
+dataset/cache/
+dataset/logs/
+dataset/ISL_DATASET/
+dataset/hf_isl_upload/
 
-# Generated landmark stores, MediaPipe models, training outputs
-lowdata_work/
+# Everything generated: landmark caches/stores, weights, sweeps, reports
+outputs/
+stores/
+sweeps/
+runs/
 *.task
 *.npy
+*.npz
 *.pt
 *.pth
-weights/
-checkpoints/
+
+# Media / archives
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.zip
+
+# Secrets
+.env
+*.token
+kaggle.json
+credentials.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

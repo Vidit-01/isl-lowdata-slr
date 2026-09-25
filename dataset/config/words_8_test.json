@@ -1,0 +1,14 @@
+{
+  "name": "isl-isolated-8words",
+  "description": "8-word smoke-test subset for pipeline validation and data-efficient model training",
+  "words": [
+    "yes",
+    "no",
+    "hello",
+    "water",
+    "eat",
+    "go",
+    "help",
+    "please"
+  ]
+}

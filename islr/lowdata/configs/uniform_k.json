@@ -1,0 +1,38 @@
+{
+ "name": "uniform_k",
+ "_about": "Every word gets K clips (classic few-shot curve over the full vocabulary).",
+ "stores": [
+  "$STORES/isl40",
+  "$STORES/include"
+ ],
+ "base": {
+  "protocol": "uniform"
+ },
+ "grid": {
+  "model": [
+   "mp_transformer",
+   "ctr_gcn",
+   "hwgat",
+   "kdf_transformer",
+   "mp_transformer_reg",
+   "partformer",
+   "partformer_cos",
+   "conv1d_former",
+   "kdf_partformer"
+  ],
+  "shots": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32
+  ],
+  "seed": [
+   0,
+   1,
+   2
+  ]
+ },
+ "split_by": "shots"
+}

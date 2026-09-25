@@ -1,0 +1,8 @@
+candidate_gloss,dataset,reason,target,uid
+namaste,,Possible greeting relative (namaste); Needs Manual Review — not auto-merged,hello,oK0JcoPqnuY
+I,INCLUDE,Pronoun I may be same ISL sign as me; Needs Manual Review — not auto-merged,me,
+house,INCLUDE,House vs home may differ in ISL; Needs Manual Review — not auto-merged,home,
+namaste,CISLR,Possible greeting relative; Needs Manual Review — not auto-merged,hello,
+Bye / Good bye variants,ISL500/INCLUDE,No exact goodbye stem in ISL500; search Bye manually,goodbye,
+OK / Alright,INCLUDE,INCLUDE has Alright; not auto-merged without docs,okay,
+Halt / Wait,various,No confirmed equivalent; Needs Manual Review,stop,
