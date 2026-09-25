@@ -33,16 +33,15 @@ Set `MEMBER` to your number, keep `MEMBERS = 4` and the same `GRIDS` as everyone
 2. otherwise copy it from `/kaggle/input`, if a complete copy with the same data version is attached;
 3. otherwise build it.
 
-The default grids use two small stores, and every member builds them in about 20 minutes:
+The default grids use one store, `isl30`: the 30-word corpus
+[`vidit031/isl-isolated-30words`](https://huggingface.co/datasets/vidit031/isl-isolated-30words)
+(635 clips, 196 MB), pinned to one commit in `"data": {"isl30": {"repo": ..., "revision": ...}}`.
+It is downloaded and MediaPipe runs on the CPUs, which takes a few minutes. Attaching a teammate's output
+only saves those minutes.
 
-* `isl40`: the 40-word corpus (`vidit031/isl-isolated-40words` on Hugging Face, pinned to one commit
-  in `"data": {"isl40": {"revision": ...}}`). ~640 clips, downloaded, then MediaPipe on the CPUs.
-* `include_words`: INCLUDE's Brother and I clips (42 clips, ~0.55 GB), renamed to the corpus's
-  thin words brother and me. Each clip is read straight out of its zip on Zenodo with
-  HTTP byte ranges, so the category zips (9 GB) are never downloaded. That's under 10 minutes at the
-  observed ~1.5 MB/s. The word mapping is in `"data": {"include_words": {"words": ...}}`.
-
-Attaching a teammate's output only saves those minutes.
+The 30-word corpus is the 40-word corpus's well-covered words, plus INCLUDE's Brother and I clips.
+`lowdata.py sources include_words` can still pull single INCLUDE labels straight out of the Zenodo zips
+(HTTP byte ranges) if more are ever needed.
 
 * INCLUDE (only for the `scarce_legacy8*` grids) is ~57 GB from a slow Zenodo server. Each member
   starts on a different set of zips. If you attach teammates' partial outputs, their stores are
@@ -100,8 +99,9 @@ Hugging Face corpus. Otherwise, record them:
 1. Record them: several signers, a few repetitions each, framed from the head to the waist.
    Name each signer `team_<name>` in `metadata.csv` (this keeps them as a separate identity for the
    signer-independent test split).
-2. Add the clips to the Hugging Face dataset. This creates a new commit.
-3. Put that commit in `"data": {"isl40": {"revision": "<new commit>"}}` in **all** grids, and push.
+2. Add the clips to the Hugging Face dataset (`vidit031/isl-isolated-30words`). This creates a new commit.
+3. Put that commit in `"data": {"isl30": {"revision": "<new commit>"}}` in **all** grids, add the new
+   words to `base.words`, and push.
    Stores from the old commit are then not reused, so every member rebuilds from the same new data.
 
 ## 2. `STAGE="report"`

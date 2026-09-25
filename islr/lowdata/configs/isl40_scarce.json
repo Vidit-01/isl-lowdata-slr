@@ -1,23 +1,13 @@
 {
  "name": "isl40_scarce",
- "_about": "Main experiment, 30 words (base.words): the 40-word corpus's words with >= 16 clips and >= 4 signers, brother and me topped up with INCLUDE's Brother and I clips (fetched from inside the zips). The 8 legacy words get K training clips, the other 22 keep their whole pool (~10 clips after the signer-independent test split). One K per member.",
+ "_about": "Main experiment on the 30-word corpus (HF vidit031/isl-isolated-30words: the 40-word corpus's words with >= 16 clips and >= 4 signers, brother and me topped up with INCLUDE's Brother and I clips). The 8 legacy words get K training clips, the other 22 keep their whole pool (~10 clips after the signer-independent test split). One K per member.",
  "stores": [
-  "$STORES/isl40",
-  "$STORES/include_words"
+  "$STORES/isl30"
  ],
  "data": {
-  "isl40": {
-   "revision": "255ce7fd10da5d05bc30d59668ba256e5f02531c"
-  },
-  "include_words": {
-   "words": {
-    "Brother": "brother",
-    "I": "me"
-   },
-   "categories": [
-    "People",
-    "Pronouns"
-   ]
+  "isl30": {
+   "repo": "vidit031/isl-isolated-30words",
+   "revision": "d98c5277424bdfdde75108c68deb8e820241c59b"
   }
  },
  "base": {

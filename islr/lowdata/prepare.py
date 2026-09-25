@@ -33,8 +33,8 @@ from pathlib import Path
 from .store import completion, init_store, merge_stores, store_fingerprint
 
 INCOMPLETE = 3
-BUILDERS = ("isl40", "include", "include_words")
-MATCH_KEYS = ("revision", "words")  # a stored copy is reused only if these equal the grid's
+BUILDERS = ("isl40", "isl30", "include", "include_words")
+MATCH_KEYS = ("repo", "revision", "words")  # a stored copy is reused only if these equal the grid's
 
 
 def grid_stores(grid: dict) -> list[str]:
@@ -69,9 +69,9 @@ def build(name: str, store: Path, opts: dict, left_h: float | None, member: int,
           workers: int | None, work: str | None) -> bool:
     from . import sources
 
-    if name == "isl40":
-        return sources.ingest_isl40(str(store), opts.get("root"), workers, None, left_h,
-                                    opts.get("revision"), work)
+    if name in ("isl40", "isl30"):
+        return sources.ingest_isl40(str(store), opts.get("root"), workers, None, left_h, opts.get("revision"),
+                                    work, opts.get("repo", sources.HF_ISL30 if name == "isl30" else sources.HF_ISL40))
     if name == "include":
         return sources.ingest_include(str(store), work=work, zip_dir=opts.get("zip_dir"), workers=workers,
                                       time_budget_h=left_h, member=member, members=members)

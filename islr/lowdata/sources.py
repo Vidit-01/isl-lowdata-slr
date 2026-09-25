@@ -48,6 +48,7 @@ ZENODO_INCLUDE = "https://zenodo.org/api/records/4010759"
 HF_DICT = "silentone0725/Indian_Sign_Language_Data.gov_Rencoded"
 HF_CISLR = "Exploration-Lab/CISLR"
 HF_ISL40 = "vidit031/isl-isolated-40words"
+HF_ISL30 = "vidit031/isl-isolated-30words"  # the study's 30 words (+ INCLUDE Brother/I clips)
 
 LICENSES = {
     "include": "CC-BY-4.0 (INCLUDE, Zenodo 4010759)",
@@ -255,8 +256,8 @@ def download(url: str, dst: Path, size: int | None = None, token: str | None = N
 # ----------------------------------------------------------------------------------
 def ingest_isl40(store: str, root: str | None = None, workers: int | None = None, shard=None,
                  time_budget_h: float | None = None, revision: str | None = None,
-                 work: str | None = None) -> bool:
-    """Existing corpus. metadata.csv carries dataset/signer; INCLUDE clips get a
+                 work: str | None = None, repo: str = HF_ISL40) -> bool:
+    """Existing corpus (or another repo in its format, e.g. the 30-word one). metadata.csv carries dataset/signer; INCLUDE clips get a
     session from their MVI number at load time (store.identity via load_stores).
     `revision` pins the Hugging Face commit, so every member extracts the same corpus.
     Signers named `User<n>` (ISL500) or `team_<name>` (the team's own recordings) are
@@ -264,8 +265,8 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
     if root is None or not (Path(root) / "metadata.csv").exists():
         from huggingface_hub import snapshot_download
 
-        root = root or str(Path(work or Path(store) / "_download") / "isl40")
-        snapshot_download(repo_id=HF_ISL40, repo_type="dataset", local_dir=root, revision=revision,
+        root = root or str(Path(work or Path(store) / "_download") / Path(store).name)
+        snapshot_download(repo_id=repo, repo_type="dataset", local_dir=root, revision=revision,
                           token=os.environ.get("HF_TOKEN"))
     root = Path(root)
     meta = pd.read_csv(root / "metadata.csv", dtype=str, keep_default_na=False)
@@ -289,7 +290,7 @@ def ingest_isl40(store: str, root: str | None = None, workers: int | None = None
     done = extract_to_store(pd.DataFrame(rows), store, workers=workers, shard=shard,
                             time_budget_s=time_budget_h * 3600 if time_budget_h else None)
     if done.attrs.get("complete") and shard is None:
-        info = mark_complete(store, source="isl40", revision=revision or "main", videos=len(rows))
+        info = mark_complete(store, source="isl40", repo=repo, revision=revision or "main", videos=len(rows))
         print(f"[isl40] complete: {info}", flush=True)
         return True
     return False
@@ -355,7 +356,7 @@ def include_word_members(words: dict, categories=None) -> list[dict]:
 
 def ingest_include_words(store: str, words: dict, categories=None, work: str | None = None,
                          workers: int | None = None, time_budget_h: float | None = None,
-                         connections: int = 16) -> bool:
+                         connections: int = 8) -> bool:
     """A few INCLUDE words without downloading whole zips: each clip is fetched from inside
     its remote zip (HTTP byte ranges), e.g. Brother, House and I (21 clips each, ~14 GB of
     zips) for the 40-word corpus's thin words brother, home and me. Clips keep INCLUDE's
