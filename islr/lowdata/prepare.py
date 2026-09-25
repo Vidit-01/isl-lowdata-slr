@@ -118,8 +118,10 @@ def prepare(grid: dict, dest: str | Path, member: int = 0, members: int = 1, inp
                     build(name, store, opts, left, member, members, workers, work)
                     how = "built here"
             info = completion(store)
-        ok = _matches(info, opts)
         fp = store_fingerprint(store)
+        ok = _matches(info, opts) and fp["n_clips"] > 0  # an empty store is never a finished one
+        if _matches(info, opts) and not ok:
+            print(f"[data] {name}: store has 0 clips (extraction failed? see {store}/failed.txt)", flush=True)
         status[name] = {"complete": ok, "how": how, "revision": (info or {}).get("revision"), **fp}
         print(f"[data] {name}: {'COMPLETE' if ok else 'INCOMPLETE'} ({how}) - {fp['n_clips']} clips, "
               f"{fp['n_words']} words, keys {fp['keys_sha1']}", flush=True)
