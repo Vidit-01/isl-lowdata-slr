@@ -301,14 +301,27 @@ def predict(spec, model, bank, idx: np.ndarray, device, bs: int, use_amp: bool, 
     hook = head.register_forward_hook(lambda m, inp, out: feats.append(inp[0].detach().float().cpu())) \
         if head is not None else None
     crit = torch.nn.CrossEntropyLoss()
+    s = 0
     with torch.no_grad():
-        for s in range(0, len(idx), bs):
-            xs = bank.gather(torch.as_tensor(idx[s: s + bs]), device)
-            ii = xs[0]
-            y = torch.zeros(len(ii), dtype=torch.long, device=device)
-            with autocast("cuda", enabled=use_amp):
-                lg, _ = forward_logits(spec, model, xs, y, crit, device, train=False)
+        while s < len(idx):
+            n_feats = len(feats)
+            try:
+                xs = bank.gather(torch.as_tensor(idx[s: s + bs]), device)
+                ii = xs[0]
+                y = torch.zeros(len(ii), dtype=torch.long, device=device)
+                with autocast("cuda", enabled=use_amp):
+                    lg, _ = forward_logits(spec, model, xs, y, crit, device, train=False)
+            except RuntimeError as e:  # OutOfMemoryError, or AcceleratorError on newer torch
+                # Eval batches are larger than training ones; on a small GPU halve and retry.
+                if bs == 1 or "out of memory" not in str(e):
+                    raise
+                del feats[n_feats:]
+                xs = ii = y = None
+                torch.cuda.empty_cache()
+                bs //= 2
+                continue
             logits.append(lg.float().cpu())
+            s += len(ii)
     if hook is not None:
         hook.remove()
     lg = torch.cat(logits).numpy() if logits else np.zeros((0, 0), np.float32)
@@ -565,11 +578,13 @@ def run(cfg: dict) -> int:
         # ---- evaluate (rank 0)
         if dist_.main:
             head = find_head(model, C, spec, bank.gather(torch.as_tensor(pos_te[:2]), dev), dev)
-            lg_te, emb_te = predict(spec, model, bank, pos_te, dev, cfg["eval_bs"], use_amp, head)
+            # eval batch capped relative to the training batch (TD-GCN at 256 needs ~7 GB)
+            eval_bs = max(1, min(int(cfg["eval_bs"]), 8 * int(hp.get("batch_size") or 32)))
+            lg_te, emb_te = predict(spec, model, bank, pos_te, dev, eval_bs, use_amp, head)
             y_te = y_sub[pos_te]
             proto = None
             if emb_te is not None:
-                _, emb_tr = predict(spec, model, bank, pos_tr, dev, cfg["eval_bs"], use_amp, head)
+                _, emb_tr = predict(spec, model, bank, pos_tr, dev, eval_bs, use_amp, head)
                 proto = prototype_predict(emb_tr, y_sub[pos_tr], emb_te)
             pred = lg_te.argmax(1)
             m = classification_metrics(y_te, pred, split.words, split.targets, lg_te, proto)

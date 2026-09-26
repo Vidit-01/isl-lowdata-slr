@@ -263,6 +263,9 @@ def prebuild_banks(jobs: list[dict], workers: int | None) -> None:
             build_bank(tables[tk], mod, c["num_frames"], c["trim"], cache, workers)
 
 
+RESTART = 5  # worker exit code: rerun me in a fresh process
+
+
 def worker(jobs_file: str, slot: int, deadline: float | None) -> int:
     """Runs jobs in-process (bank loaded once) on the GPU given by CUDA_VISIBLE_DEVICES.
     Jobs are claimed through exclusive files, so two workers never run the same job."""
@@ -292,12 +295,17 @@ def worker(jobs_file: str, slot: int, deadline: float | None) -> int:
         t0 = time.time()
         try:
             rc = R.run(cfg)
-        except Exception:  # keep the queue going; the error is kept next to the run
+        except Exception as e:  # keep the queue going; the error is kept next to the run
             out.mkdir(parents=True, exist_ok=True)
             (out / "error.txt").write_text(traceback.format_exc())
             print(f"[slot {slot}] FAILED {j['name']} (see error.txt)", flush=True)
             n_fail += 1
             rc = 1
+            if "CUDA error" in str(e):
+                # The CUDA context may be unusable now; let run_member start a fresh worker.
+                print(f"[slot {slot}] CUDA error, restarting worker ({n_ok} ok, {n_fail} failed so far)",
+                      flush=True)
+                return RESTART
         finally:
             try:
                 import torch
@@ -332,37 +340,38 @@ def run_member(jobs: list[dict], out: Path, gpus: int, deadline: float | None, w
     if solo:
         jf = meta / f"jobs_{session}.json"
         jf.write_text(json.dumps({"claims": str(meta / f"claims_{session}"), "jobs": solo}, default=str))
-        procs = []
-        slots = max(1, gpus)
-        for s in range(slots):
+        # one worker process per GPU, restarted after a CUDA error; each worker's output
+        # goes to its log file and to this process's stdout
+        import threading
+
+        lock = threading.Lock()
+        codes = {}
+
+        def slot_loop(s):
             env = dict(os.environ, PYTHONUNBUFFERED="1")
             env["CUDA_VISIBLE_DEVICES"] = str(s) if gpus > 0 else "-1"  # "" is dropped on Windows
             cmd = [sys.executable, str(LAUNCHER), "sweep", "--worker", str(jf), "--slot", str(s)]
             if deadline:
                 cmd += ["--deadline", str(deadline)]
-            logf = open(meta / f"slot{s}_{session}.log", "w")
-            procs.append((subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                           text=True, bufsize=1), logf))
-        # copy each worker's output to its log file and to this process's stdout
-        import threading
+            with open(meta / f"slot{s}_{session}.log", "w") as f:
+                for _ in range(len(solo) + 1):
+                    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                            text=True, bufsize=1)
+                    for line in proc.stdout:
+                        f.write(line)
+                        f.flush()
+                        with lock:
+                            print(line, end="", flush=True)
+                    codes[s] = proc.wait()
+                    if codes[s] != RESTART:
+                        break
 
-        lock = threading.Lock()
-
-        def pump(proc, f):
-            for line in proc.stdout:
-                f.write(line)
-                f.flush()
-                with lock:
-                    print(line, end="", flush=True)
-
-        threads = [threading.Thread(target=pump, args=pf, daemon=True) for pf in procs]
+        threads = [threading.Thread(target=slot_loop, args=(s,), daemon=True) for s in range(max(1, gpus))]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        for p, f in procs:
-            rc = max(rc, p.wait())
-            f.close()
+        rc = max([rc] + [0 if c == RESTART else c for c in codes.values()])
     for j in ddp:
         if deadline and time.time() + j["cost"] / 2 * 1.2 > deadline:
             print(f"[sweep] skipping DDP job {j['name']}: not enough time left", flush=True)
