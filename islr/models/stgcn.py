@@ -95,7 +95,8 @@ class STGCN(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (N, C, T, V)
         n, c, t, v = x.shape
-        x = self.data_bn(x.reshape(n, c * v, t)).reshape(n, c, t, v)
+        # normalise per (channel, joint): the T axis has to be last before flattening
+        x = self.data_bn(x.permute(0, 1, 3, 2).reshape(n, c * v, t)).view(n, c, v, t).permute(0, 1, 3, 2).contiguous()
         x = self.blocks(x)
         x = F.adaptive_avg_pool2d(x, 1).reshape(n, -1)
         return self.head(x)

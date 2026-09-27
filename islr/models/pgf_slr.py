@@ -14,18 +14,20 @@ from .skeleton import IN_CHANNELS, PARTS
 
 
 class PartPool(nn.Module):
+    """One node per part: that part's joints, flattened, through its own projection.
+    (Averaging the joints first would reduce each hand to its centroid and lose handshape.)"""
+
     def __init__(self, in_channels: int, d_model: int):
         super().__init__()
-        self.proj = nn.Linear(in_channels, d_model)
         self.parts = list(PARTS.values())
+        self.proj = nn.ModuleList([nn.Linear(in_channels * len(idx), d_model) for idx in self.parts])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, C, T, V) -> (B, T, P, D)
         x = x.permute(0, 2, 3, 1)
-        pooled = []
-        for idx in self.parts:
-            pooled.append(x[:, :, list(idx)].mean(dim=2))
-        return self.proj(torch.stack(pooled, dim=2))
+        b, t = x.shape[:2]
+        return torch.stack([proj(x[:, :, list(idx)].reshape(b, t, -1)) for idx, proj in zip(self.parts, self.proj)],
+                           dim=2)
 
 
 class FrequencyPartAttention(nn.Module):
