@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Effect of the rich words' data on the target words. Target-word top-1 (\%) when every word has $K$ clips (uniform) $\to$ when the 22 other words keep their full pools (scarce). The target words' training clips and all test clips are identical in the two settings. In parentheses: scarce $-$ uniform in points, pooled over 3 seeds ($n=186$ target clips); $^{*}$: exact McNemar $p<0.05$.}
+\label{tab:univsscarce}
+\begin{tabular}{lcccc}
+\toprule
+Model & $K=1$ & $K=2$ & $K=4$ & $K=8$ \\
+\midrule
+MP-Transformer & 11$\to$6 (-5$^{*}$) & 35$\to$23 (-11$^{*}$) & 50$\to$45 (-6) & 63$\to$53 (-10$^{*}$) \\
+HWGAT & 11$\to$1 (-10$^{*}$) & 22$\to$11 (-11$^{*}$) & 26$\to$19 (-9$^{*}$) & 40$\to$33 (-7$^{*}$) \\
+KDF-Transformer & 9$\to$8 (-2) & 29$\to$22 (-7) & 41$\to$38 (-4) & 57$\to$54 (-2) \\
+MP-Transformer + mixup/LS & 11$\to$4 (-7$^{*}$) & 34$\to$17 (-16$^{*}$) & 48$\to$37 (-11$^{*}$) & 54$\to$47 (-7$^{*}$) \\
+PartFormer & 20$\to$17 (-4) & 43$\to$37 (-6) & 66$\to$55 (-10$^{*}$) & 69$\to$70 (+2) \\
+PartFormer-cos & 22$\to$12 (-10$^{*}$) & 40$\to$39 (-1) & 64$\to$59 (-5) & 71$\to$70 (+0) \\
+Conv1DFormer & 20$\to$14 (-6) & 47$\to$39 (-8$^{*}$) & 61$\to$61 (-1) & 72$\to$72 (-1) \\
+KDF-PartFormer & 18$\to$10 (-8$^{*}$) & 47$\to$37 (-10$^{*}$) & 65$\to$56 (-9$^{*}$) & 68$\to$64 (-3) \\
+\bottomrule
+\end{tabular}
+\end{table}

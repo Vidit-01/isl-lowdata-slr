@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Vocabulary size: top-1 accuracy (\%) on the 8 target words at $K\in\{2,8\}$ when they are embedded in 8 (targets only), 16 or 30 words. The target test clips are the same in every column.}
+\label{tab:vocab}
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{3}{c}{$K=2$} & \multicolumn{3}{c}{$K=8$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Model & $V{=}8$ & $V{=}16$ & $V{=}30$ & $V{=}8$ & $V{=}16$ & $V{=}30$ \\
+\midrule
+MP-Transformer & 49.5 & 29.7 & 23.5 & 79.4 & 68.8 & 52.8 \\
+HWGAT & 38.8 & 13.8 & 11.4 & 54.8 & 46.3 & 32.5 \\
+KDF-Transformer & 47.5 & 28.9 & 22.1 & 74.9 & 62.0 & 54.1 \\
+MP-Transformer + mixup/LS & 49.7 & 30.2 & 17.3 & 76.9 & 65.6 & 46.5 \\
+PartFormer & \textbf{59.7} & 52.8 & 37.2 & 83.2 & 80.4 & 70.4 \\
+PartFormer-cos & 59.3 & 52.7 & 39.1 & 84.0 & 81.2 & 69.7 \\
+Conv1DFormer & 56.4 & \textbf{55.9} & \textbf{39.4} & \textbf{86.8} & \textbf{82.3} & \textbf{71.8} \\
+KDF-PartFormer & 55.5 & 47.8 & 36.6 & 83.2 & 77.4 & 64.2 \\
+\bottomrule
+\end{tabular}
+\end{table}

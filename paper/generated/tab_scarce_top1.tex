@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Scarce protocol: overall top-1 accuracy (\%) over all 30 words (240 test clips per seed).}
+\label{tab:scarce_all}
+\begin{tabular}{lcccc}
+\toprule
+Model & $K=1$ & $K=2$ & $K=4$ & $K=8$ \\
+\midrule
+MP-BiLSTM & 49.1\,{\scriptsize$\pm$2.6} & 52.2\,{\scriptsize$\pm$5.3} & 54.6\,{\scriptsize$\pm$4.0} & 58.7\,{\scriptsize$\pm$3.5} \\
+MP-Transformer & 53.0\,{\scriptsize$\pm$2.3} & 56.4\,{\scriptsize$\pm$4.0} & 61.2\,{\scriptsize$\pm$5.6} & 62.6\,{\scriptsize$\pm$4.5} \\
+\midrule
+HWGAT & 35.7\,{\scriptsize$\pm$2.4} & 39.3\,{\scriptsize$\pm$4.2} & 40.7\,{\scriptsize$\pm$3.3} & 45.5\,{\scriptsize$\pm$4.1} \\
+\midrule
+FFT-BiLSTM & 47.3\,{\scriptsize$\pm$2.8} & 51.6\,{\scriptsize$\pm$2.9} & 53.3\,{\scriptsize$\pm$2.6} & 57.4\,{\scriptsize$\pm$3.3} \\
+CWT-BiLSTM & 49.1\,{\scriptsize$\pm$3.0} & 51.1\,{\scriptsize$\pm$1.5} & 53.2\,{\scriptsize$\pm$3.9} & 56.6\,{\scriptsize$\pm$2.6} \\
+CWT-Transformer & 52.2\,{\scriptsize$\pm$3.0} & 58.8\,{\scriptsize$\pm$2.3} & 60.3\,{\scriptsize$\pm$3.8} & 64.8\,{\scriptsize$\pm$3.2} \\
+\midrule
+KDF-Transformer & 52.6\,{\scriptsize$\pm$4.6} & 55.1\,{\scriptsize$\pm$4.7} & 58.6\,{\scriptsize$\pm$7.0} & 60.4\,{\scriptsize$\pm$7.0} \\
+\quad $-$DMD & 50.4\,{\scriptsize$\pm$1.8} & 52.2\,{\scriptsize$\pm$4.2} & 59.5\,{\scriptsize$\pm$6.9} & 61.9\,{\scriptsize$\pm$4.6} \\
+\quad $-$Koopman head & 50.9\,{\scriptsize$\pm$3.1} & 53.4\,{\scriptsize$\pm$6.2} & 57.6\,{\scriptsize$\pm$7.5} & 59.9\,{\scriptsize$\pm$8.5} \\
+\quad $-$both (mixup+LS only) & 51.9\,{\scriptsize$\pm$1.8} & 53.7\,{\scriptsize$\pm$4.8} & 58.1\,{\scriptsize$\pm$5.3} & 60.5\,{\scriptsize$\pm$7.3} \\
+\midrule
+PartFormer & \textbf{65.6\,{\scriptsize$\pm$5.1}} & 69.3\,{\scriptsize$\pm$5.4} & 73.5\,{\scriptsize$\pm$3.9} & 77.1\,{\scriptsize$\pm$3.6} \\
+PartFormer-cos & 63.2\,{\scriptsize$\pm$2.1} & \textbf{71.0\,{\scriptsize$\pm$4.5}} & 74.3\,{\scriptsize$\pm$4.2} & 76.7\,{\scriptsize$\pm$2.5} \\
+Conv1DFormer & 64.3\,{\scriptsize$\pm$3.2} & 71.0\,{\scriptsize$\pm$6.6} & \textbf{75.7\,{\scriptsize$\pm$4.6}} & \textbf{78.1\,{\scriptsize$\pm$5.6}} \\
+KDF-PartFormer & 62.2\,{\scriptsize$\pm$3.2} & 66.9\,{\scriptsize$\pm$2.7} & 72.3\,{\scriptsize$\pm$4.6} & 73.4\,{\scriptsize$\pm$4.5} \\
+\bottomrule
+\end{tabular}
+\end{table}

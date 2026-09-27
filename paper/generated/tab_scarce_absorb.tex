@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Absorption: percentage of target-word test clips predicted as one of the 22 rich words (lower is better; best in bold).}
+\label{tab:absorb}
+\begin{tabular}{lcccc}
+\toprule
+Model & $K=1$ & $K=2$ & $K=4$ & $K=8$ \\
+\midrule
+MP-BiLSTM & 93.0\,{\scriptsize$\pm$1.6} & 71.0\,{\scriptsize$\pm$13.5} & 53.6\,{\scriptsize$\pm$8.5} & 39.7\,{\scriptsize$\pm$11.9} \\
+MP-Transformer & 91.4\,{\scriptsize$\pm$1.2} & 72.9\,{\scriptsize$\pm$10.8} & 51.2\,{\scriptsize$\pm$14.6} & 44.0\,{\scriptsize$\pm$12.4} \\
+\midrule
+HWGAT & 98.4\,{\scriptsize$\pm$1.6} & 88.0\,{\scriptsize$\pm$4.7} & 78.2\,{\scriptsize$\pm$5.0} & 61.9\,{\scriptsize$\pm$6.0} \\
+\midrule
+FFT-BiLSTM & 89.7\,{\scriptsize$\pm$3.9} & 70.5\,{\scriptsize$\pm$1.0} & 61.1\,{\scriptsize$\pm$5.6} & 45.7\,{\scriptsize$\pm$8.6} \\
+CWT-BiLSTM & 88.3\,{\scriptsize$\pm$4.0} & 68.7\,{\scriptsize$\pm$9.6} & 52.9\,{\scriptsize$\pm$13.3} & 46.7\,{\scriptsize$\pm$14.2} \\
+CWT-Transformer & 90.5\,{\scriptsize$\pm$3.3} & 69.0\,{\scriptsize$\pm$9.6} & 53.1\,{\scriptsize$\pm$13.7} & 34.6\,{\scriptsize$\pm$16.4} \\
+\midrule
+KDF-Transformer & 91.0\,{\scriptsize$\pm$1.0} & 73.5\,{\scriptsize$\pm$11.7} & 56.5\,{\scriptsize$\pm$10.6} & 40.4\,{\scriptsize$\pm$4.8} \\
+\quad $-$DMD & 92.7\,{\scriptsize$\pm$0.7} & 82.8\,{\scriptsize$\pm$13.9} & 54.9\,{\scriptsize$\pm$16.5} & 44.2\,{\scriptsize$\pm$10.8} \\
+\quad $-$Koopman head & 92.7\,{\scriptsize$\pm$3.5} & 80.9\,{\scriptsize$\pm$12.9} & 60.3\,{\scriptsize$\pm$17.9} & 40.1\,{\scriptsize$\pm$7.2} \\
+\quad $-$both (mixup+LS only) & 95.7\,{\scriptsize$\pm$2.6} & 80.2\,{\scriptsize$\pm$11.8} & 59.5\,{\scriptsize$\pm$9.2} & 50.2\,{\scriptsize$\pm$11.3} \\
+\midrule
+PartFormer & \textbf{78.4\,{\scriptsize$\pm$5.2}} & 61.8\,{\scriptsize$\pm$9.3} & 44.8\,{\scriptsize$\pm$7.9} & 28.5\,{\scriptsize$\pm$8.9} \\
+PartFormer-cos & 84.5\,{\scriptsize$\pm$7.7} & \textbf{59.4\,{\scriptsize$\pm$6.8}} & 40.2\,{\scriptsize$\pm$4.3} & 29.4\,{\scriptsize$\pm$3.9} \\
+Conv1DFormer & 83.6\,{\scriptsize$\pm$1.2} & 59.6\,{\scriptsize$\pm$13.2} & \textbf{39.0\,{\scriptsize$\pm$7.8}} & \textbf{27.0\,{\scriptsize$\pm$12.3}} \\
+KDF-PartFormer & 88.1\,{\scriptsize$\pm$4.5} & 61.9\,{\scriptsize$\pm$5.5} & 43.4\,{\scriptsize$\pm$7.8} & 32.3\,{\scriptsize$\pm$10.0} \\
+\bottomrule
+\end{tabular}
+\end{table}

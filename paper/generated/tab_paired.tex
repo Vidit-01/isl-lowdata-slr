@@ -1,0 +1,51 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Paired comparison with MP-Transformer on the scarce protocol, pooled over 3 seeds (same test clips). $\Delta$: accuracy difference in points with a 95\,\% paired-bootstrap CI; $p$: exact two-sided McNemar test. Target clips: $n=186$; all clips: $n=720$.}
+\label{tab:paired}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llcccc}
+\toprule
+ & & \multicolumn{2}{c}{target words} & \multicolumn{2}{c}{all words} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+$K$ & Model & $\Delta$ [95\,\% CI] & $p$ & $\Delta$ [95\,\% CI] & $p$ \\
+\midrule
+1 & PartFormer & +10.8 [+6.2, +15.3] & $2.1\!\times\!10^{-5}$ & +12.3 [+9.4, +15.2] & $2.2\!\times\!10^{-15}$ \\
+1 & PartFormer-cos & +6.2 [+2.3, +10.2] & 0.003 & +10.5 [+7.7, +13.4] & $1.1\!\times\!10^{-12}$ \\
+1 & Conv1DFormer & +8.0 [+3.4, +12.5] & 0.001 & +11.4 [+8.5, +14.5] & $7.5\!\times\!10^{-15}$ \\
+1 & KDF-PartFormer & +4.0 [+0.0, +8.5] & 0.118 & +9.2 [+6.4, +12.3] & $9.0\!\times\!10^{-10}$ \\
+1 & CWT-Transformer & +2.8 [-1.1, +7.4] & 0.302 & -0.6 [-3.5, +2.5] & 0.783 \\
+1 & KDF-Transformer & +1.1 [-2.3, +4.5] & 0.754 & -0.4 [-2.7, +1.9] & 0.807 \\
+1 & MP-Transformer + mixup/LS & -2.3 [-5.7, +1.1] & 0.344 & -1.0 [-3.2, +1.2] & 0.435 \\
+1 & HWGAT & -5.1 [-9.1, -1.7] & 0.012 & -17.2 [-20.8, -13.6] & $6.3\!\times\!10^{-20}$ \\
+\midrule
+2 & PartFormer & +13.1 [+6.2, +19.9] & $4.3\!\times\!10^{-4}$ & +12.7 [+9.5, +15.8] & $1.5\!\times\!10^{-14}$ \\
+2 & PartFormer-cos & +15.3 [+8.0, +22.7] & $1.4\!\times\!10^{-4}$ & +14.5 [+11.1, +17.6] & $3.4\!\times\!10^{-17}$ \\
+2 & Conv1DFormer & +14.8 [+7.4, +22.2] & $2.2\!\times\!10^{-4}$ & +14.3 [+11.0, +17.6] & $1.7\!\times\!10^{-16}$ \\
+2 & KDF-PartFormer & +13.1 [+5.7, +20.5] & 0.001 & +10.5 [+7.5, +13.7] & $2.1\!\times\!10^{-10}$ \\
+2 & CWT-Transformer & +6.2 [-0.6, +13.1] & 0.099 & +2.6 [-0.7, +5.9] & 0.145 \\
+2 & KDF-Transformer & -2.3 [-8.0, +4.0] & 0.572 & -1.4 [-4.0, +1.2] & 0.314 \\
+2 & MP-Transformer + mixup/LS & -6.8 [-12.5, -1.1] & 0.029 & -2.6 [-5.2, -0.1] & 0.050 \\
+2 & HWGAT & -10.8 [-17.6, -4.0] & 0.003 & -16.3 [-20.2, -12.3] & $3.6\!\times\!10^{-15}$ \\
+\midrule
+4 & PartFormer & +11.4 [+5.1, +18.2] & 0.002 & +12.7 [+9.7, +15.9] & $2.9\!\times\!10^{-15}$ \\
+4 & PartFormer-cos & +14.8 [+8.0, +21.6] & $4.2\!\times\!10^{-5}$ & +13.2 [+9.8, +16.5] & $9.1\!\times\!10^{-15}$ \\
+4 & Conv1DFormer & +15.9 [+8.5, +22.7] & $4.1\!\times\!10^{-5}$ & +14.5 [+11.3, +17.6] & $2.8\!\times\!10^{-18}$ \\
+4 & KDF-PartFormer & +11.9 [+5.1, +18.8] & 0.001 & +11.3 [+7.9, +14.6] & $3.2\!\times\!10^{-11}$ \\
+4 & CWT-Transformer & +1.7 [-4.5, +8.0] & 0.736 & -0.3 [-3.8, +3.2] & 0.935 \\
+4 & KDF-Transformer & -7.4 [-13.1, -1.7] & 0.019 & -2.6 [-5.5, +0.1] & 0.085 \\
+4 & MP-Transformer + mixup/LS & -8.0 [-13.6, -2.3] & 0.013 & -3.2 [-5.8, -0.6] & 0.020 \\
+4 & HWGAT & -25.0 [-33.5, -16.5] & $3.6\!\times\!10^{-8}$ & -20.1 [-24.1, -16.0] & $1.5\!\times\!10^{-20}$ \\
+\midrule
+8 & PartFormer & +16.5 [+10.2, +22.7] & $4.2\!\times\!10^{-7}$ & +14.5 [+11.3, +17.6] & $1.0\!\times\!10^{-17}$ \\
+8 & PartFormer-cos & +15.9 [+10.2, +22.2] & $7.7\!\times\!10^{-7}$ & +14.0 [+10.8, +17.2] & $1.6\!\times\!10^{-16}$ \\
+8 & Conv1DFormer & +17.0 [+10.8, +23.3] & $6.0\!\times\!10^{-7}$ & +15.3 [+12.0, +18.6] & $2.2\!\times\!10^{-19}$ \\
+8 & KDF-PartFormer & +10.2 [+4.0, +16.5] & 0.002 & +10.8 [+7.7, +14.0] & $2.8\!\times\!10^{-11}$ \\
+8 & CWT-Transformer & +9.1 [+3.4, +15.3] & 0.005 & +2.6 [-0.7, +5.8] & 0.151 \\
+8 & KDF-Transformer & +0.0 [-5.1, +5.1] & 1.000 & -2.3 [-5.1, +0.3] & 0.113 \\
+8 & MP-Transformer + mixup/LS & -6.2 [-10.8, -2.3] & 0.007 & -2.2 [-4.8, +0.4] & 0.119 \\
+8 & HWGAT & -19.9 [-27.8, -11.9] & $3.3\!\times\!10^{-6}$ & -16.6 [-20.5, -12.6] & $5.5\!\times\!10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\end{table}

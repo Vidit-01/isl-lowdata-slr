@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Koopman/DMD ablation on the scarce protocol: target-word top-1 (\%). DMD: Hankel-DMD spectrum and mode branch; KH: class-wise Koopman head. The first five rows share the landmark Transformer backbone.}
+\label{tab:kdf}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l>{\raggedright\arraybackslash}p{2.9cm}cccc}
+\toprule
+Model & Components & $K=1$ & $K=2$ & $K=4$ & $K=8$ \\
+\midrule
+MP-Transformer & -- & 6.2\,{\scriptsize$\pm$3.0} & 23.5\,{\scriptsize$\pm$7.5} & 44.7\,{\scriptsize$\pm$11.7} & 52.8\,{\scriptsize$\pm$11.7} \\
+MP-Transformer + mixup/LS & mixup+LS & 4.3\,{\scriptsize$\pm$2.6} & 17.3\,{\scriptsize$\pm$10.1} & 36.6\,{\scriptsize$\pm$7.7} & 46.5\,{\scriptsize$\pm$10.6} \\
+KDF $-$Koopman head & mixup+LS, DMD & 6.3\,{\scriptsize$\pm$4.8} & 18.1\,{\scriptsize$\pm$13.8} & 36.2\,{\scriptsize$\pm$16.4} & 50.2\,{\scriptsize$\pm$11.4} \\
+KDF $-$DMD & mixup+LS, KH & 6.4\,{\scriptsize$\pm$1.9} & 13.0\,{\scriptsize$\pm$11.9} & 39.8\,{\scriptsize$\pm$15.7} & 54.3\,{\scriptsize$\pm$10.2} \\
+KDF-Transformer & mixup+LS, DMD, KH & 7.5\,{\scriptsize$\pm$1.2} & 22.1\,{\scriptsize$\pm$11.7} & 37.7\,{\scriptsize$\pm$12.7} & 54.1\,{\scriptsize$\pm$9.6} \\
+\midrule
+PartFormer & part front end, mixup+LS & 17.0\,{\scriptsize$\pm$3.5} & 37.2\,{\scriptsize$\pm$10.2} & 54.7\,{\scriptsize$\pm$7.1} & 70.4\,{\scriptsize$\pm$10.8} \\
+KDF-PartFormer & part front end, mixup+LS, DMD, KH & 9.8\,{\scriptsize$\pm$3.2} & 36.6\,{\scriptsize$\pm$6.9} & 55.6\,{\scriptsize$\pm$9.5} & 64.2\,{\scriptsize$\pm$9.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
