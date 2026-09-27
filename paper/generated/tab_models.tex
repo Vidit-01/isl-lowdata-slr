@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Models. Parameters for 30 classes; training time is the mean wall-clock time of a scarce $K{=}8$ run (1\,815 steps, batch 16) on one laptop RTX~2050 GPU.}
+\label{tab:models}
+\begin{tabular}{lllrr}
+\toprule
+Model & Family & Input & Params & Train (s) \\
+\midrule
+MP-BiLSTM & Landmark & pose+hands (75 pts) & 2.58\,M & 100 \\
+MP-Transformer & Landmark & pose+hands (75 pts) & 0.43\,M & 103 \\
+\midrule
+HWGAT & Graph & 27-joint skeleton & 1.21\,M & 315 \\
+\midrule
+FFT-BiLSTM & Spectral & FFT + kinematics & 2.95\,M & 98 \\
+CWT-BiLSTM & Spectral & CWT bands & 3.28\,M & 71 \\
+CWT-Transformer & Spectral & CWT bands & 0.47\,M & 72 \\
+\midrule
+KDF-Transformer & Koopman & pose+hands + DMD & 0.51\,M & 159 \\
+KDF $-$DMD & Koopman & pose+hands (75 pts) & 0.50\,M & 140 \\
+KDF $-$Koopman head & Koopman & pose+hands + DMD & 0.45\,M & 133 \\
+MP-Transformer + mixup/LS & Koopman & pose+hands (75 pts) & 0.43\,M & 126 \\
+\midrule
+PartFormer & Part & parts (119 pts) & 0.40\,M & 158 \\
+PartFormer-cos & Part & parts (119 pts) & 0.40\,M & 166 \\
+Conv1DFormer & Part & parts (119 pts) & 0.60\,M & 197 \\
+KDF-PartFormer & Part & parts + DMD & 0.48\,M & 193 \\
+\bottomrule
+\end{tabular}
+\end{table}

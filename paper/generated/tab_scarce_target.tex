@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Scarce protocol: top-1 accuracy (\%) on the 8 target words, which have $K$ training clips each while the other 22 words keep all their clips. Mean $\pm$ s.d.\ over 3 seeds; 62 target test clips per seed from unseen signers. Best per column in bold.}
+\label{tab:scarce}
+\begin{tabular}{lcccc}
+\toprule
+Model & $K=1$ & $K=2$ & $K=4$ & $K=8$ \\
+\midrule
+MP-BiLSTM & 6.1\,{\scriptsize$\pm$3.0} & 24.8\,{\scriptsize$\pm$15.1} & 38.3\,{\scriptsize$\pm$12.0} & 51.8\,{\scriptsize$\pm$15.8} \\
+MP-Transformer & 6.2\,{\scriptsize$\pm$3.0} & 23.5\,{\scriptsize$\pm$7.5} & 44.7\,{\scriptsize$\pm$11.7} & 52.8\,{\scriptsize$\pm$11.7} \\
+\midrule
+HWGAT & 1.0\,{\scriptsize$\pm$0.9} & 11.4\,{\scriptsize$\pm$5.2} & 18.7\,{\scriptsize$\pm$2.0} & 32.5\,{\scriptsize$\pm$9.5} \\
+\midrule
+FFT-BiLSTM & 8.6\,{\scriptsize$\pm$3.7} & 21.7\,{\scriptsize$\pm$1.2} & 35.0\,{\scriptsize$\pm$7.3} & 46.2\,{\scriptsize$\pm$12.1} \\
+CWT-BiLSTM & 11.2\,{\scriptsize$\pm$3.2} & 27.5\,{\scriptsize$\pm$11.0} & 41.4\,{\scriptsize$\pm$12.1} & 49.4\,{\scriptsize$\pm$15.4} \\
+CWT-Transformer & 8.9\,{\scriptsize$\pm$4.1} & 30.0\,{\scriptsize$\pm$9.6} & 45.1\,{\scriptsize$\pm$13.7} & 62.1\,{\scriptsize$\pm$17.5} \\
+\midrule
+KDF-Transformer & 7.5\,{\scriptsize$\pm$1.2} & 22.1\,{\scriptsize$\pm$11.7} & 37.7\,{\scriptsize$\pm$12.7} & 54.1\,{\scriptsize$\pm$9.6} \\
+\quad $-$DMD & 6.4\,{\scriptsize$\pm$1.9} & 13.0\,{\scriptsize$\pm$11.9} & 39.8\,{\scriptsize$\pm$15.7} & 54.3\,{\scriptsize$\pm$10.2} \\
+\quad $-$Koopman head & 6.3\,{\scriptsize$\pm$4.8} & 18.1\,{\scriptsize$\pm$13.8} & 36.2\,{\scriptsize$\pm$16.4} & 50.2\,{\scriptsize$\pm$11.4} \\
+\quad $-$both (mixup+LS only) & 4.3\,{\scriptsize$\pm$2.6} & 17.3\,{\scriptsize$\pm$10.1} & 36.6\,{\scriptsize$\pm$7.7} & 46.5\,{\scriptsize$\pm$10.6} \\
+\midrule
+PartFormer & \textbf{17.0\,{\scriptsize$\pm$3.5}} & 37.2\,{\scriptsize$\pm$10.2} & 54.7\,{\scriptsize$\pm$7.1} & 70.4\,{\scriptsize$\pm$10.8} \\
+PartFormer-cos & 11.6\,{\scriptsize$\pm$6.3} & 39.1\,{\scriptsize$\pm$7.4} & 58.5\,{\scriptsize$\pm$4.7} & 69.7\,{\scriptsize$\pm$3.6} \\
+Conv1DFormer & 13.9\,{\scriptsize$\pm$2.5} & \textbf{39.4\,{\scriptsize$\pm$14.0}} & \textbf{60.5\,{\scriptsize$\pm$7.9}} & \textbf{71.8\,{\scriptsize$\pm$11.2}} \\
+KDF-PartFormer & 9.8\,{\scriptsize$\pm$3.2} & 36.6\,{\scriptsize$\pm$6.9} & 55.6\,{\scriptsize$\pm$9.5} & 64.2\,{\scriptsize$\pm$9.6} \\
+\bottomrule
+\end{tabular}
+\end{table}

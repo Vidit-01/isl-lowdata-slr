@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Per-word top-1 (\%) on the 8 target words, scarce protocol, mean over 3 seeds.}
+\label{tab:perword}
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{MP-Transformer} & \multicolumn{2}{c}{PartFormer} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Word & $K=1$ & $K=8$ & $K=1$ & $K=8$ \\
+\midrule
+eat & 0 & 8 & 0 & 33 \\
+go & 10 & 77 & 5 & 86 \\
+hello & 7 & 75 & 26 & 77 \\
+help & 14 & 65 & 32 & 74 \\
+no & 4 & 42 & 12 & 80 \\
+please & 6 & 40 & 11 & 79 \\
+water & 0 & 37 & 17 & 64 \\
+yes & 5 & 37 & 18 & 61 \\
+\bottomrule
+\end{tabular}
+\end{table}
